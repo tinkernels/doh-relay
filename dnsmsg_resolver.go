@@ -128,7 +128,7 @@ func (rsv *DnsMsgResolver) Resolve(qName string, qType uint16, eDnsClientSubnet 
 		log.Error(err)
 		return
 	}
-	dnsMsgRsp_ := &DnsMsgResolverRsp{
+	rsvRsp_ := &DnsMsgResolverRsp{
 		Status:             msgRsp_.Rcode,
 		Truncated:          msgRsp_.Truncated,
 		RecursionDesired:   msgRsp_.RecursionDesired,
@@ -136,16 +136,16 @@ func (rsv *DnsMsgResolver) Resolve(qName string, qType uint16, eDnsClientSubnet 
 		AuthenticData:      msgRsp_.AuthenticatedData,
 		CheckingDisabled:   msgRsp_.CheckingDisabled,
 	}
-	dnsMsgRsp_.Question = make([]DnsMsgResolverQ, len(msgRsp_.Question))
+	rsvRsp_.Question = make([]DnsMsgResolverQ, len(msgRsp_.Question))
 	for i, q := range msgRsp_.Question {
-		dnsMsgRsp_.Question[i] = DnsMsgResolverQ{
+		rsvRsp_.Question[i] = DnsMsgResolverQ{
 			Name: q.Name,
 			Type: q.Qtype,
 		}
 	}
-	dnsMsgRsp_.Answer = msgRsp_.Answer
-	dnsMsgRsp_.Authority = msgRsp_.Ns
-	dnsMsgRsp_.Additional = msgRsp_.Extra
+	rsvRsp_.Answer = msgRsp_.Answer
+	rsvRsp_.Authority = msgRsp_.Ns
+	rsvRsp_.Additional = msgRsp_.Extra
 	log.Tracef("got reply from upstream: %v", msgRsp_.String())
-	return dnsMsgRsp_, nil
+	return rsvRsp_, nil
 }

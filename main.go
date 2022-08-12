@@ -16,7 +16,7 @@ import (
 	"syscall"
 )
 
-const CurrentVersion = "v0.5.0"
+const CurrentVersion = "v0.6.0"
 const DefaultRelayListenAddr = "127.0.0.1:15353"
 
 var (
@@ -35,8 +35,13 @@ var (
 	dns53UpstreamFlag = flag.String(
 		"dns53-upstream",
 		"",
-		"Upstream DoH resolver (Only DnsMsg resolver currently), "+
+		"Upstream DoH resolver for dns53 service, "+
 			"e.g. https://149.112.112.11/dns-query,https://9.9.9.11/dns-query",
+	)
+	dns53UpstreamJsonFlag = flag.Bool(
+		"dns53-upstream-json",
+		false,
+		"If dns53 upstream endpoints transfer with json format.",
 	)
 	relayFlag = flag.Bool(
 		"relay",
@@ -55,8 +60,13 @@ var (
 	relayUpstreamFlag = flag.String(
 		"relay-upstream",
 		"",
-		"Upstream DoH resolver (Only JSON resolver currently), "+
-			"e.g. https://149.112.112.11:5053/dns-query,https://9.9.9.11:5053/dns-query",
+		"Upstream DoH resolver for relay service, "+
+			"e.g. https://149.112.112.11/dns-query,https://9.9.9.11/dns-query",
+	)
+	relayUpstreamJsonFlag = flag.Bool(
+		"relay-upstream-json",
+		false,
+		"If relay upstream endpoints transfer with json format.",
 	)
 	relayTlsFlag = flag.Bool(
 		"relay-tls",
@@ -111,8 +121,8 @@ var log = &logger.Logger{
 }
 
 var (
-	JsonResolverAnswerer   *DnsMsgAnswerer
-	DnsMsgResolverAnswerer *DnsMsgAnswerer
+	RelayAnswerer *DnsMsgAnswerer
+	Dns53Answerer *DnsMsgAnswerer
 )
 
 func printVersion() {
@@ -150,12 +160,12 @@ func main() {
 	chRelaySvc_, chDns53Svc_ := make(chan error), make(chan error)
 
 	if *relayFlag {
-		initJsonRsvAnswerer()
+		initRelayRsvAnswerer()
 		go serveRelaySvc(chRelaySvc_)
 	}
 
 	if *dns53Flag {
-		initDnsMsgRsvAnswerer()
+		initDns53RsvAnswerer()
 		go serveDns53Svc(chDns53Svc_)
 	}
 
@@ -188,8 +198,8 @@ func main() {
 	os.Exit(0)
 }
 
-// initJsonRsvAnswerer initializes the DNS-over-HTTPS upstream query service.
-func initJsonRsvAnswerer() {
+// initRelayRsvAnswerer initializes the DNS-over-HTTPS upstream query service.
+func initRelayRsvAnswerer() {
 	upstreamEndpoints_ := Quad9JsonEndpoints
 	if tmpEndpoints_ := strings.Split(*relayUpstreamFlag, ","); *relayUpstreamFlag != "" &&
 		len(tmpEndpoints_) > 0 {
@@ -198,11 +208,17 @@ func initJsonRsvAnswerer() {
 			upstreamEndpoints_[i_] = strings.TrimSpace(tmpEndpoints_[i_])
 		}
 	}
-	JsonResolverAnswerer = NewDnsMsgAnswerer(NewJsonResolver(upstreamEndpoints_, *cacheFlag))
+	var resolver DohResolver
+	if *relayUpstreamJsonFlag {
+		resolver = NewJsonResolver(upstreamEndpoints_, *cacheFlag)
+	} else {
+		resolver = NewDnsMsgResolver(upstreamEndpoints_, *cacheFlag)
+	}
+	RelayAnswerer = NewDnsMsgAnswerer(resolver)
 }
 
-// initDnsMsgRsvAnswerer initializes the DNS-over-HTTPS upstream query service.
-func initDnsMsgRsvAnswerer() {
+// initDns53RsvAnswerer initializes the DNS-over-HTTPS upstream query service.
+func initDns53RsvAnswerer() {
 	upstreamEndpoints_ := Quad9DnsMsgEndpoints
 	if tmpEndpoints_ := strings.Split(*dns53UpstreamFlag, ","); *dns53UpstreamFlag != "" &&
 		len(tmpEndpoints_) > 0 {
@@ -211,7 +227,13 @@ func initDnsMsgRsvAnswerer() {
 			upstreamEndpoints_[i_] = strings.TrimSpace(tmpEndpoints_[i_])
 		}
 	}
-	DnsMsgResolverAnswerer = NewDnsMsgAnswerer(NewDnsMsgResolver(upstreamEndpoints_, *cacheFlag))
+	var resolver DohResolver
+	if *dns53UpstreamJsonFlag {
+		resolver = NewJsonResolver(upstreamEndpoints_, *cacheFlag)
+	} else {
+		resolver = NewDnsMsgResolver(upstreamEndpoints_, *cacheFlag)
+	}
+	Dns53Answerer = NewDnsMsgAnswerer(resolver)
 }
 
 func serveRelaySvc(c chan error) {

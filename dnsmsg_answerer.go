@@ -29,7 +29,6 @@ func (dma *DnsMsgAnswerer) Answer(dnsReq *dns.Msg, eDnsClientSubnet string) (dns
 	}
 	dnsRsp = new(dns.Msg)
 	dnsRsp.SetReply(dnsReq)
-	dnsRsp.Rcode = rsvRsp_.StatusV()
 	dnsRsp.Truncated = rsvRsp_.TruncatedV()
 	dnsRsp.RecursionAvailable = rsvRsp_.RecursionAvailableV()
 	dnsRsp.AuthenticatedData = rsvRsp_.AuthenticDataV()

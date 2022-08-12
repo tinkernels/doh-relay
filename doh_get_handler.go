@@ -33,7 +33,7 @@ func DohGetHandler(c *gin.Context) {
 		log.Error(err)
 		return
 	}
-	msgRsp_, err = JsonResolverAnswerer.Answer(msgReq_, eDnsClientSubnet_)
+	msgRsp_, err = RelayAnswerer.Answer(msgReq_, eDnsClientSubnet_)
 	if err != nil {
 		log.Error(err)
 		ResponseError(c, msgReq_)

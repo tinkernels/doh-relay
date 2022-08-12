@@ -14,7 +14,7 @@ func NewDns53Handler(eDnsSubnet string) (h *Dns53Handler) {
 }
 
 func (h *Dns53Handler) ServeDNS(w dns.ResponseWriter, msgReq *dns.Msg) {
-	msgRsp_, err := DnsMsgResolverAnswerer.Answer(msgReq, h.EDNSSubnet)
+	msgRsp_, err := Dns53Answerer.Answer(msgReq, h.EDNSSubnet)
 	if err != nil {
 		log.Error(err)
 		return
