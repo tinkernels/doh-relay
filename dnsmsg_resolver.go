@@ -103,7 +103,7 @@ func (rsv *DnsMsgResolver) Resolve(qName string, qType uint16, eDnsClientSubnet 
 		log.Error(err)
 		return
 	}
-	msgBase64_ := base64.URLEncoding.EncodeToString(msgBytes_)
+	msgBase64_ := base64.RawURLEncoding.EncodeToString(msgBytes_)
 	httpRsp_, err := rsv.httpClient.Get(
 		fmt.Sprintf("%s?dns=%s", rsv.nextEndpoint(), msgBase64_),
 		http.Header{"Accept": []string{"application/dns-message"}},

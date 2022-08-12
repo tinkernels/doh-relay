@@ -22,7 +22,7 @@ func DohGetHandler(c *gin.Context) {
 		eDnsClientSubnet_ = c.ClientIP()
 	}
 	log.Debugf("edns_client_subnet param is %v", eDnsClientSubnet_)
-	msgReqBytes_, err := base64.URLEncoding.DecodeString(dnsQParam_)
+	msgReqBytes_, err := base64.RawURLEncoding.DecodeString(dnsQParam_)
 	if err != nil {
 		log.Error(err)
 		return
