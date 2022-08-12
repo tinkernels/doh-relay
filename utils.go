@@ -58,7 +58,7 @@ func CommonResolverQuery(rsv DohResolver, qName string, qType uint16, eDnsClient
 	cacheKey_ := fmt.Sprintf("NAME[%s]TYPE[%d]LOC[%s]", qName, qType, geoIPCountry_)
 	if rsv.IsUsingCache() {
 		if c_, ok_ := rsv.GetCache(cacheKey_); ok_ {
-			log.Debugf("got cache for: %s %s", qName, dns.TypeToString[qType])
+			log.Infof("got cache for: %s %s", qName, dns.TypeToString[qType])
 			rsp, err = c_, nil
 			return
 		}

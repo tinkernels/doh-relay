@@ -26,10 +26,10 @@ type JsonResolver struct {
 func NewJsonResolver(endpoints []string, useCache bool) (rsv *JsonResolver) {
 	rsv = &JsonResolver{
 		httpClient: hystrix.NewClient(
-			hystrix.WithHTTPTimeout(9*time.Second),
-			hystrix.WithHystrixTimeout(9*time.Second),
-			hystrix.WithMaxConcurrentRequests(32),
-			hystrix.WithRequestVolumeThreshold(64),
+			hystrix.WithMaxConcurrentRequests(128),
+			hystrix.WithRequestVolumeThreshold(40),
+			hystrix.WithErrorPercentThreshold(20),
+			hystrix.WithSleepWindow(8),
 		),
 		useCache:  useCache,
 		endpoints: endpoints,
