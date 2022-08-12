@@ -1,6 +1,6 @@
 **
 
 !**/*.go
-!go.mod
-!go.sum
-!Makefile
+!**/go.mod
+!**/go.sum
+!**/Makefile
