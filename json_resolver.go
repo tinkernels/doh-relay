@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ReneKroon/ttlcache"
+	"github.com/gojek/heimdall/v7"
 	"github.com/gojek/heimdall/v7/hystrix"
 	"github.com/miekg/dns"
 	"net/http"
@@ -26,10 +27,14 @@ type JsonResolver struct {
 func NewJsonResolver(endpoints []string, useCache bool) (rsv *JsonResolver) {
 	rsv = &JsonResolver{
 		httpClient: hystrix.NewClient(
-			hystrix.WithMaxConcurrentRequests(16),
+			hystrix.WithMaxConcurrentRequests(64),
 			hystrix.WithRequestVolumeThreshold(40),
 			hystrix.WithErrorPercentThreshold(20),
 			hystrix.WithSleepWindow(8),
+			hystrix.WithRetryCount(5),
+			hystrix.WithRetrier(heimdall.NewRetrier(heimdall.NewExponentialBackoff(
+				time.Millisecond*50, time.Second*1, 1.8, time.Millisecond*20,
+			))),
 		),
 		useCache:  useCache,
 		endpoints: endpoints,
