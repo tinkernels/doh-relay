@@ -19,6 +19,8 @@ import (
 const CurrentVersion = "v0.6.0"
 const DefaultRelayListenAddr = "127.0.0.1:15353"
 
+var HttpClientMaxConcurrency = 64
+
 var (
 	dns53Flag = flag.Bool(
 		"dns53", false, "Enable dns53 service.",
@@ -88,6 +90,10 @@ var (
 		"",
 		"Specify maxmind city db file path.",
 	)
+	httpClientMaxConcurrencyFlag = flag.Int(
+		"http-client-max-concurrency",
+		HttpClientMaxConcurrency, "Set http client max concurrency.",
+	)
 	cacheFlag = flag.Bool(
 		"cache",
 		true,
@@ -138,6 +144,8 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	HttpClientMaxConcurrency = *httpClientMaxConcurrencyFlag
 
 	if *versionFlag {
 		printVersion()
@@ -200,7 +208,10 @@ func main() {
 
 // initRelayRsvAnswerer initializes the DNS-over-HTTPS upstream query service.
 func initRelayRsvAnswerer() {
-	upstreamEndpoints_ := Quad9JsonEndpoints
+	upstreamEndpoints_ := Quad9DnsMsgEndpoints
+	if *relayUpstreamJsonFlag {
+		upstreamEndpoints_ = Quad9JsonEndpoints
+	}
 	if tmpEndpoints_ := strings.Split(*relayUpstreamFlag, ","); *relayUpstreamFlag != "" &&
 		len(tmpEndpoints_) > 0 {
 		upstreamEndpoints_ = make([]string, len(tmpEndpoints_))
@@ -220,6 +231,9 @@ func initRelayRsvAnswerer() {
 // initDns53RsvAnswerer initializes the DNS-over-HTTPS upstream query service.
 func initDns53RsvAnswerer() {
 	upstreamEndpoints_ := Quad9DnsMsgEndpoints
+	if *dns53UpstreamJsonFlag {
+		upstreamEndpoints_ = Quad9JsonEndpoints
+	}
 	if tmpEndpoints_ := strings.Split(*dns53UpstreamFlag, ","); *dns53UpstreamFlag != "" &&
 		len(tmpEndpoints_) > 0 {
 		upstreamEndpoints_ = make([]string, len(tmpEndpoints_))
