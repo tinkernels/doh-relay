@@ -30,7 +30,7 @@ func NewDnsMsgResolver(endpoints []string, useCache bool) (rsv *DnsMsgResolver) 
 		httpClient: hystrix.NewClient(
 			hystrix.WithHTTPTimeout(9*time.Second),
 			hystrix.WithHystrixTimeout(9*time.Second),
-			hystrix.WithMaxConcurrentRequests(128),
+			hystrix.WithMaxConcurrentRequests(16),
 			hystrix.WithRequestVolumeThreshold(40),
 			hystrix.WithErrorPercentThreshold(20),
 			hystrix.WithSleepWindow(8),
@@ -148,6 +148,10 @@ func (rsv *DnsMsgResolver) Resolve(qName string, qType uint16, eDnsClientSubnet 
 	rsvRsp_.Answer = msgRsp_.Answer
 	rsvRsp_.Authority = msgRsp_.Ns
 	rsvRsp_.Additional = msgRsp_.Extra
+	if len(msgRsp_.Question) > 0 {
+		log.Infof("got reply to question: %s, %s", msgRsp_.Question[0].Name,
+			dns.TypeToString[msgRsp_.Question[0].Qtype])
+	}
 	log.Tracef("got reply from upstream: %v", msgRsp_.String())
 	return rsvRsp_, nil
 }

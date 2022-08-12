@@ -36,7 +36,6 @@ func DohGetHandler(c *gin.Context) {
 	msgRsp_, err = RelayAnswerer.Answer(msgReq_, eDnsClientSubnet_)
 	if err != nil || msgRsp_ == nil {
 		log.Error(err)
-		ResponseError(c, msgReq_)
 		return
 	}
 	msgRspBytes_, err := msgRsp_.Pack()
