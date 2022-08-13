@@ -42,10 +42,17 @@ func NewJsonResolver(endpoints []string, useCache bool) (rsv *JsonResolver) {
 		endpoints: endpoints,
 		nextEndpoint: func() func() string {
 			initV_ := 0
-			return func() string {
-				ret_ := rsv.endpoints[initV_]
-				initV_ = (initV_ + 1) % len(rsv.endpoints)
-				return ret_
+			if len(rsv.endpoints) == 1 {
+				return func() string {
+					return rsv.endpoints[0]
+				}
+			} else {
+				return func() string {
+					ret_ := rsv.endpoints[initV_]
+
+					initV_ = (initV_ + 1) % len(rsv.endpoints)
+					return ret_
+				}
 			}
 		}(),
 	}
