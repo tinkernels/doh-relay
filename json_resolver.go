@@ -117,7 +117,7 @@ func (rsv *JsonResolver) Resolve(qName string, qType uint16, eDnsClientSubnet st
 		log.Tracef("json response: %+v", jsonRsp_)
 	}
 	if len(jsonRsp_.Question) == 1 {
-		log.Infof("got reply to question: %s %s", jsonRsp_.Question[0].Name,
+		log.Infof("got reply to question: %s %s [%s]", jsonRsp_.Question[0].Name,
 			dns.TypeToString[jsonRsp_.Question[0].Type])
 	}
 	for _, r_ := range jsonRsp_.Answer {

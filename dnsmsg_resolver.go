@@ -160,8 +160,8 @@ func (rsv *DnsMsgResolver) Resolve(qName string, qType uint16, eDnsClientSubnet 
 	rsvRsp_.Authority = msgRsp_.Ns
 	rsvRsp_.Additional = msgRsp_.Extra
 	if len(msgRsp_.Question) > 0 {
-		log.Infof("got reply to question: %s, %s", msgRsp_.Question[0].Name,
-			dns.TypeToString[msgRsp_.Question[0].Qtype])
+		log.Infof("got reply to question: %s, %s [%s]", msgRsp_.Question[0].Name,
+			dns.TypeToString[msgRsp_.Question[0].Qtype], msgBase64_)
 	}
 	log.Tracef("got reply from upstream: %v", msgRsp_.String())
 	return rsvRsp_, nil
