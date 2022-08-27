@@ -67,12 +67,6 @@ func CommonResolverQuery(rsv DohResolver, qName string, qType uint16, eDnsClient
 	if rsv.IsUsingCache() {
 		if err != nil || rsp == nil {
 			log.Errorf("err: %v, reply: %v", err, rsp)
-
-			// error response, set cache for 9 seconds.
-			rsv.SetCache(cacheKey_, &DohCacheItem{
-				DohResolverResponse: rsp,
-				SetTimeUnix:         time.Now().Unix()},
-				9*time.Second)
 		} else {
 			rsv.SetCache(cacheKey_, &DohCacheItem{
 				DohResolverResponse: rsp,

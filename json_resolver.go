@@ -31,7 +31,7 @@ func NewJsonResolver(endpoints []string, useCache bool) (rsv *JsonResolver) {
 			hystrix.WithHystrixTimeout(9*time.Second),
 			hystrix.WithMaxConcurrentRequests(HttpClientMaxConcurrency),
 			hystrix.WithRequestVolumeThreshold(40),
-			hystrix.WithErrorPercentThreshold(20),
+			hystrix.WithErrorPercentThreshold(50),
 			hystrix.WithSleepWindow(8),
 			hystrix.WithRetryCount(5),
 			hystrix.WithRetrier(heimdall.NewRetrier(heimdall.NewExponentialBackoff(
