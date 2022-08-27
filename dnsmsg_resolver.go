@@ -30,7 +30,7 @@ func NewDnsMsgResolver(endpoints []string, useCache bool) (rsv *DnsMsgResolver) 
 	rsv = &DnsMsgResolver{
 		httpClient: hystrix.NewClient(
 			hystrix.WithHTTPTimeout(9*time.Second),
-			hystrix.WithHystrixTimeout(9*time.Second),
+			hystrix.WithHystrixTimeout(15*time.Second),
 			hystrix.WithMaxConcurrentRequests(HttpClientMaxConcurrency),
 			hystrix.WithRequestVolumeThreshold(40),
 			hystrix.WithErrorPercentThreshold(50),
