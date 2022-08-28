@@ -6,6 +6,7 @@ import (
 	"github.com/ReneKroon/ttlcache"
 	"github.com/gojek/heimdall/v7"
 	"github.com/gojek/heimdall/v7/hystrix"
+	"github.com/lucas-clemente/quic-go/http3"
 	"github.com/miekg/dns"
 	"net/http"
 	"time"
@@ -24,9 +25,16 @@ type JsonResolver struct {
 	nextEndpoint func() string
 }
 
-func NewJsonResolver(endpoints []string, useCache bool) (rsv *JsonResolver) {
+func NewJsonResolver(endpoints []string, useCache bool, ifHttp3 bool) (rsv *JsonResolver) {
+	httpClient_ := &http.Client{
+		Timeout: 9 * time.Second,
+	}
+	if ifHttp3 {
+		httpClient_.Transport = &http3.RoundTripper{}
+	}
 	rsv = &JsonResolver{
 		httpClient: hystrix.NewClient(
+			hystrix.WithHTTPClient(httpClient_),
 			hystrix.WithHTTPTimeout(9*time.Second),
 			hystrix.WithHystrixTimeout(15*time.Second),
 			hystrix.WithMaxConcurrentRequests(HttpClientMaxConcurrency),

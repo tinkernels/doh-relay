@@ -40,6 +40,11 @@ var (
 		"Upstream DoH resolver for dns53 service, "+
 			"e.g. https://149.112.112.11/dns-query,https://9.9.9.11/dns-query",
 	)
+	dns53UpstreamHTTP3Flag = flag.Bool(
+		"dns53-upstream-http3",
+		false,
+		"Transmit to upstream over HTTP/3 client.",
+	)
 	dns53UpstreamJsonFlag = flag.Bool(
 		"dns53-upstream-json",
 		false,
@@ -64,6 +69,11 @@ var (
 		"",
 		"Upstream DoH resolver for relay service, "+
 			"e.g. https://149.112.112.11/dns-query,https://9.9.9.11/dns-query",
+	)
+	relayUpstreamHTTP3Flag = flag.Bool(
+		"relay-upstream-http3",
+		false,
+		"Transmit to upstream over HTTP/3 client.",
 	)
 	relayUpstreamJsonFlag = flag.Bool(
 		"relay-upstream-json",
@@ -221,9 +231,9 @@ func initRelayRsvAnswerer() {
 	}
 	var resolver DohResolver
 	if *relayUpstreamJsonFlag {
-		resolver = NewJsonResolver(upstreamEndpoints_, *cacheFlag)
+		resolver = NewJsonResolver(upstreamEndpoints_, *cacheFlag, *relayUpstreamHTTP3Flag)
 	} else {
-		resolver = NewDnsMsgResolver(upstreamEndpoints_, *cacheFlag)
+		resolver = NewDnsMsgResolver(upstreamEndpoints_, *cacheFlag, *relayUpstreamHTTP3Flag)
 	}
 	RelayAnswerer = NewDnsMsgAnswerer(resolver)
 }
@@ -243,9 +253,9 @@ func initDns53RsvAnswerer() {
 	}
 	var resolver DohResolver
 	if *dns53UpstreamJsonFlag {
-		resolver = NewJsonResolver(upstreamEndpoints_, *cacheFlag)
+		resolver = NewJsonResolver(upstreamEndpoints_, *cacheFlag, *dns53UpstreamHTTP3Flag)
 	} else {
-		resolver = NewDnsMsgResolver(upstreamEndpoints_, *cacheFlag)
+		resolver = NewDnsMsgResolver(upstreamEndpoints_, *cacheFlag, *dns53UpstreamHTTP3Flag)
 	}
 	Dns53Answerer = NewDnsMsgAnswerer(resolver)
 }
