@@ -26,9 +26,7 @@ type JsonResolver struct {
 }
 
 func NewJsonResolver(endpoints []string, useCache bool, ifHttp3 bool) (rsv *JsonResolver) {
-	httpClient_ := &http.Client{
-		Timeout: 9 * time.Second,
-	}
+	httpClient_ := &http.Client{}
 	if ifHttp3 {
 		httpClient_.Transport = &http3.RoundTripper{}
 	}

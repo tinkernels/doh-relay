@@ -28,9 +28,7 @@ type DnsMsgResolver struct {
 }
 
 func NewDnsMsgResolver(endpoints []string, useCache bool, ifHttp3 bool) (rsv *DnsMsgResolver) {
-	httpClient_ := &http.Client{
-		Timeout: 9 * time.Second,
-	}
+	httpClient_ := &http.Client{}
 	if ifHttp3 {
 		httpClient_.Transport = &http3.RoundTripper{}
 	}
