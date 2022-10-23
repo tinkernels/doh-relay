@@ -95,6 +95,11 @@ var (
 		"",
 		"Specify tls key path.",
 	)
+	relay2ndECSFlag = flag.String(
+		"relay-2nd-ecs",
+		"",
+		"Specify secondary edns-client-subnet",
+	)
 	maxmindCityDBFileFlag = flag.String(
 		"maxmind-citydb-file",
 		"",

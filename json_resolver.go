@@ -8,7 +8,9 @@ import (
 	"github.com/gojek/heimdall/v7/hystrix"
 	"github.com/lucas-clemente/quic-go/http3"
 	"github.com/miekg/dns"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -92,13 +94,70 @@ func (rsv *JsonResolver) Query(qName string, qType uint16, eDnsClientSubnet stri
 func (rsv *JsonResolver) Resolve(qName string, qType uint16, eDnsClientSubnet string) (
 	rsp DohResolverRsp, err error) {
 
-	eDnsClientSubnet_ := DefaultEDnsSubnetIP
-	if ip_ := ObtainIPFromString(eDnsClientSubnet); ip_ != nil && GeoipCountry(ip_) != "" {
-		eDnsClientSubnet_ = eDnsClientSubnet
+	ecsIP_ := []net.IP{net.ParseIP(DefaultEDnsSubnetIP)}
+	ecsGEOCountryCodes_ := []string{DefaultCountry}
+
+	var tmpIPs_ []net.IP
+	var tmpGeoCountries_ []string
+	ecsIPStrs_ := strings.Split(eDnsClientSubnet, ",")
+	for _, s := range ecsIPStrs_ {
+		if ip_ := ObtainIPFromString(s); ip_ != nil && GeoipCountry(ip_) != "" {
+			tmpIPs_ = append(tmpIPs_, ip_)
+			tmpGeoCountries_ = append(tmpGeoCountries_, GeoipCountry(ip_))
+		}
 	}
+	if len(tmpIPs_) > 0 && len(tmpIPs_) == len(tmpGeoCountries_) {
+		ecsIP_ = tmpIPs_
+		ecsGEOCountryCodes_ = tmpGeoCountries_
+	}
+
+ipGEOLoop:
+	for i, ip := range ecsIP_ {
+		rsp, err = rsv.queryUpstream(qName, qType, ip)
+		if err != nil {
+			continue
+		}
+		switch qType {
+		case dns.TypeA:
+			{
+				for _, r := range rsp.AnswerV() {
+					switch r.(type) {
+					case *dns.A:
+						{
+							if ipA := r.(*dns.A).A; ipA != nil &&
+								GeoipCountry(ipA) == ecsGEOCountryCodes_[i] {
+								break ipGEOLoop
+							}
+						}
+					}
+				}
+				break
+			}
+		case dns.TypeAAAA:
+			{
+				for _, r := range rsp.AnswerV() {
+					switch r.(type) {
+					case *dns.AAAA:
+						if ipAAAA := r.(*dns.AAAA).AAAA; ipAAAA != nil &&
+							GeoipCountry(ipAAAA) == ecsGEOCountryCodes_[i] {
+							break ipGEOLoop
+						}
+					}
+				}
+				break
+			}
+		default:
+			break ipGEOLoop
+		}
+	}
+	return
+}
+
+func (rsv *JsonResolver) queryUpstream(qName string, qType uint16, ecsIP net.IP) (rsp DohResolverRsp, err error) {
+
 	httpRsp_, err := rsv.httpClient.Get(
 		fmt.Sprintf("%s?name=%s&type=%d&do=1&edns_client_subnet=%s&random_padding=%d",
-			rsv.nextEndpoint(), qName, qType, eDnsClientSubnet_, time.Now().Nanosecond()),
+			rsv.nextEndpoint(), qName, qType, ecsIP.String(), time.Now().Nanosecond()),
 		http.Header{"Accept": []string{"application/x-javascript,application/json"}},
 	)
 	defer func() {

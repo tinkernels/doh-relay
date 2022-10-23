@@ -10,7 +10,7 @@ func TestDohJsonResolver_Resolve(t *testing.T) {
 		qName string
 		qType uint16
 	}
-	resolver_ := NewJsonResolver(Quad9JsonEndpoints, true)
+	resolver_ := NewJsonResolver(Quad9JsonEndpoints, true, false)
 	tests := []struct {
 		name     string
 		resolver *JsonResolver

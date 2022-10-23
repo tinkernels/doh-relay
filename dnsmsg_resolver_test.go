@@ -69,7 +69,7 @@ func Test_DnsMsgBase64(t *testing.T) {
 }
 
 func TestDnsMsgResolver_Resolve(t *testing.T) {
-	resolver_ := NewDnsMsgResolver(Quad9DnsMsgEndpoints, true)
+	resolver_ := NewDnsMsgResolver(Quad9DnsMsgEndpoints, true, false)
 	type args struct {
 		qName            string
 		qType            uint16

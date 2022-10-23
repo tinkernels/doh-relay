@@ -33,6 +33,9 @@ func DohGetHandler(c *gin.Context) {
 		log.Error(err)
 		return
 	}
+	if *relay2ndECSFlag != "" {
+		eDnsClientSubnet_ = strings.Join(append([]string{eDnsClientSubnet_}, *relay2ndECSFlag), ",")
+	}
 	msgRsp_, err = RelayAnswerer.Answer(msgReq_, eDnsClientSubnet_)
 	if err != nil || msgRsp_ == nil {
 		log.Error(err)
