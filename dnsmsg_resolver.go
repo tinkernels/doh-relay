@@ -164,11 +164,11 @@ func (rsv *DnsMsgResolver) queryUpstream(qName string, qType uint16, ecsIP net.I
 	if ip4_ := ecsIP.To4(); ip4_ != nil {
 		eDnsSubnetRec_.Family = 1
 		eDnsSubnetRec_.Address = ip4_
-		eDnsSubnetRec_.SourceNetmask = net.IPv4len * 8
+		eDnsSubnetRec_.SourceNetmask = 24 // ipv4 mask
 	} else {
 		eDnsSubnetRec_.Family = 2
 		eDnsSubnetRec_.Address = ecsIP.To16()
-		eDnsSubnetRec_.SourceNetmask = net.IPv6len * 8
+		eDnsSubnetRec_.SourceNetmask = 56 // ipv6 mask
 	}
 	opt_ := &dns.OPT{Hdr: dns.RR_Header{
 		Name: ".", Rrtype: dns.TypeOPT}, Option: []dns.EDNS0{eDnsSubnetRec_},
