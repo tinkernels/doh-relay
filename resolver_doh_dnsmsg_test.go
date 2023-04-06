@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"github.com/miekg/dns"
+	"net"
 	"testing"
 )
 
@@ -129,7 +130,8 @@ func TestDnsMsgResolver_Resolve(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rsv := resolver_
-			_, err := rsv.Resolve(tt.args.qName, tt.args.qType, tt.args.eDnsClientSubnet)
+			ecsIP_ := net.ParseIP(tt.args.eDnsClientSubnet)
+			_, err := rsv.Resolve(tt.args.qName, tt.args.qType, &ecsIP_)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Resolve() error = %v, wantErr %v", err, tt.wantErr)
 				return

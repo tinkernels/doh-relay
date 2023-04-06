@@ -29,10 +29,10 @@ var (
 		"dns53-listen",
 		"udp://:53,tcp://:53", "Set dns53 service listen port.",
 	)
-	dns53EDnsClientSubnetFlag = flag.String(
-		"dns53-edns_client_subnet",
+	dns532ndECSIPsFlag = flag.String(
+		"dns53-2nd-ecs-ip",
 		"",
-		"Set dns53 edns_client_subnet field.",
+		"Set dns53 secondary edns_client_subnet ip, eg: 12.34.56.78.",
 	)
 	dns53UpstreamFlag = flag.String(
 		"dns53-upstream",
@@ -95,10 +95,10 @@ var (
 		"",
 		"Specify tls key path.",
 	)
-	relay2ndECSFlag = flag.String(
-		"relay-2nd-ecs",
+	relay2ndECSIPFlag = flag.String(
+		"relay-2nd-ecs-ip",
 		"",
-		"Specify secondary edns-client-subnet",
+		"Specify secondary edns-client-subnet ip, eg: 12.34.56.78",
 	)
 	maxmindCityDBFileFlag = flag.String(
 		"maxmind-citydb-file",
@@ -120,7 +120,7 @@ var (
 		"Specify cache backend",
 	)
 	redisURIFLag = flag.String(
-		"redisuri",
+		"redis-uri",
 		"redis://localhost:6379/0",
 		"Specify redis uri for caching",
 	)
@@ -310,9 +310,14 @@ func serveRelaySvc(c chan error) {
 	}
 	router_.RemoteIPHeaders = []string{"X-Real-IP"}
 
+	dohHandler := NewDohHandler()
+	if *relay2ndECSIPFlag != "" {
+		dohHandler.AppendECSIPStr(*relay2ndECSIPFlag)
+	}
+
 	// Routes.
-	router_.GET(*relayPathFlag, DohGetHandler)
-	router_.POST(*relayPathFlag, DohPostHandler)
+	router_.GET(*relayPathFlag, dohHandler.DohGetHandler)
+	router_.POST(*relayPathFlag, dohHandler.DohPostHandler)
 
 	listenAddr_ := DefaultRelayListenAddr
 	if ListenAddrPortAvailable(*relayListenFlag) {
@@ -335,7 +340,11 @@ func serveRelaySvc(c chan error) {
 }
 
 func serveDns53Svc(c chan error) {
-	dns.HandleFunc(".", NewDns53Handler(*dns53EDnsClientSubnetFlag).ServeDNS)
+	dns53Handler := NewDns53Handler()
+	if *dns532ndECSIPsFlag != "" {
+		dns53Handler.AppendECSIPStr(*dns532ndECSIPsFlag)
+	}
+	dns.HandleFunc(".", dns53Handler.ServeDNS)
 	dns53ListenAddrs_ := strings.Split(*dns53ListenFlag, ",")
 	var dns53CHs_ []chan error
 	for i := range dns53ListenAddrs_ {

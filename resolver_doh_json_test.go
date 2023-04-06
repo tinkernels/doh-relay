@@ -66,7 +66,7 @@ func TestDohJsonResolver_Resolve(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rsv := tt.resolver
-			_, err := rsv.Resolve(tt.args.qName, tt.args.qType, "")
+			_, err := rsv.Resolve(tt.args.qName, tt.args.qType, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Resolve() error = %v, wantErr %v", err, tt.wantErr)
 				return

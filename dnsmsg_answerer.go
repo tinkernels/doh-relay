@@ -15,14 +15,14 @@ func NewDnsMsgAnswerer(rsv Resolver) (dma *DnsMsgAnswerer) {
 	}
 }
 
-func (dma *DnsMsgAnswerer) Answer(dnsReq *dns.Msg, eDnsClientSubnet string) (dnsRsp *dns.Msg, err error) {
+func (dma *DnsMsgAnswerer) Answer(dnsReq *dns.Msg, ecsIPs string) (dnsRsp *dns.Msg, err error) {
 	var question_ dns.Question
 	if len(dnsReq.Question) > 0 {
 		question_ = dnsReq.Question[0]
 	} else {
 		return nil, fmt.Errorf("no question in request")
 	}
-	rsvRsp_, err := dma.Resolver.Query(question_.Name, question_.Qtype, eDnsClientSubnet)
+	rsvRsp_, err := dma.Resolver.Query(question_.Name, question_.Qtype, ecsIPs)
 
 	if err != nil || rsvRsp_ == nil {
 		return nil, fmt.Errorf("query error: %v", err)

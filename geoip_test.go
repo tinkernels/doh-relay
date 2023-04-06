@@ -15,20 +15,21 @@ func TestInitGeoipReader(t *testing.T) {
 	InitGeoipReader("")
 	for _, tt := range tests {
 		t.Run("geoIP", func(t *testing.T) {
-			t.Logf("ip %v country: %v", tt, GeoipCountry(net.ParseIP(tt)))
+			country, state, city := GeoIPCountryStateCity(net.ParseIP(tt))
+			t.Logf("ip %v country: %v, state: %v, city: %v", tt, country, state, city)
 		})
 	}
 	for _, tt := range tests {
 		t.Run("geoIP", func(t *testing.T) {
-			t.Logf("ip %v country: %v", tt, GeoipCountry(net.ParseIP(tt)))
+			country, state, city := GeoIPCountryStateCity(net.ParseIP(tt))
+			t.Logf("ip %v country: %v, state: %v, city: %v", tt, country, state, city)
 		})
 	}
-	//InitGeoipReader("/usr/local/var/GeoIP/GeoLite2-City.mmdb")
 	InitGeoipReader("/usr/local/var/GeoIP/dbip-city.mmdb")
 	for _, tt := range tests {
 		t.Run("geoIP", func(t *testing.T) {
-			t.Logf("ip %v country: %v", tt, GeoipCountry(net.ParseIP(tt)))
-			t.Logf("ip %v location name: %v", tt, GeoIPLocName(net.ParseIP(tt)))
+			country, state, city := GeoIPCountryStateCity(net.ParseIP(tt))
+			t.Logf("ip %v country: %v, state: %v, city: %v", tt, country, state, city)
 		})
 	}
 }

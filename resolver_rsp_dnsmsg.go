@@ -58,12 +58,7 @@ func (rsp *DnsMsgResolverRsp) UnixTSOfArrival() int64 {
 
 func (rsp *DnsMsgResolverRsp) ObtainMinimalTTL() (ttl uint32) {
 	var minTTLInAnswer uint32 = math.MaxUint32
-	for _, r_ := range rsp.Answer {
-		if r_.Header().Ttl < minTTLInAnswer {
-			minTTLInAnswer = r_.Header().Ttl
-		}
-	}
-	for _, r_ := range rsp.Authority {
+	for _, r_ := range ConcatSlices(rsp.Answer, rsp.Authority) {
 		if r_.Header().Ttl < minTTLInAnswer {
 			minTTLInAnswer = r_.Header().Ttl
 		}

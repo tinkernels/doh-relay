@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -92,99 +91,22 @@ func (rsv *DohDnsMsgResolver) SetCache(key string, value *RspCacheItem, ttl uint
 }
 
 // Query Dns over HTTPS endpoint.
-// If eDnsClientSubnet is empty, will use client ip as eDnsClientSubnet.
-func (rsv *DohDnsMsgResolver) Query(qName string, qType uint16, eDnsClientSubnet string) (
+func (rsv *DohDnsMsgResolver) Query(qName string, qType uint16, ecsIPs string) (
 	rsp ResolverRsp, err error) {
 
-	return CommonResolverQuery(rsv, qName, qType, eDnsClientSubnet)
+	return CommonResolverQuery(rsv, qName, qType, ecsIPs)
 }
 
-func (rsv *DohDnsMsgResolver) Resolve(qName string, qType uint16, eDnsClientSubnet string) (
+func (rsv *DohDnsMsgResolver) Resolve(qName string, qType uint16, ecsIP *net.IP) (
 	rsp ResolverRsp, err error) {
 
-	ecsIP_ := []net.IP{net.ParseIP(DefaultEDnsSubnetIP)}
-	ecsGEOCountryCodes_ := []string{DefaultCountry}
-
-	var tmpIPs_ []net.IP
-	var tmpGeoCountries_ []string
-	ecsIPStrs_ := strings.Split(eDnsClientSubnet, ",")
-	for _, s := range ecsIPStrs_ {
-		if strings.TrimSpace(s) == "" {
-			continue
-		}
-		if ip_ := ObtainIPFromString(s); ip_ != nil && GeoipCountry(ip_) != "" {
-			tmpIPs_ = append(tmpIPs_, ip_)
-			tmpGeoCountries_ = append(tmpGeoCountries_, GeoipCountry(ip_))
-		}
-	}
-	if len(tmpIPs_) > 0 && len(tmpIPs_) == len(tmpGeoCountries_) {
-		ecsIP_ = tmpIPs_
-		ecsGEOCountryCodes_ = tmpGeoCountries_
-	}
-
-ipGEOLoop:
-	for i, ip := range ecsIP_ {
-		rsp, err = rsv.queryUpstream(qName, qType, ip)
-		if err != nil {
-			continue
-		}
-		switch qType {
-		case dns.TypeA:
-			{
-				for _, r := range rsp.AnswerV() {
-					switch r.(type) {
-					case *dns.A:
-						{
-							if ipA := r.(*dns.A).A; ipA != nil &&
-								GeoipCountry(ipA) == ecsGEOCountryCodes_[i] {
-								break ipGEOLoop
-							}
-						}
-					}
-				}
-				break
-			}
-		case dns.TypeAAAA:
-			{
-				for _, r := range rsp.AnswerV() {
-					switch r.(type) {
-					case *dns.AAAA:
-						if ipAAAA := r.(*dns.AAAA).AAAA; ipAAAA != nil &&
-							GeoipCountry(ipAAAA) == ecsGEOCountryCodes_[i] {
-							break ipGEOLoop
-						}
-					}
-				}
-				break
-			}
-		default:
-			break ipGEOLoop
-		}
-	}
-	return
-}
-
-func (rsv *DohDnsMsgResolver) queryUpstream(qName string, qType uint16, ecsIP net.IP) (rsp ResolverRsp, err error) {
 	msgReq_ := new(dns.Msg)
 	defer func() { msgReq_ = nil }()
 	msgReq_.SetQuestion(dns.Fqdn(qName), qType)
 	msgReq_.RecursionDesired = true
-	eDnsSubnetRec_ := new(dns.EDNS0_SUBNET)
-	eDnsSubnetRec_.Code = dns.EDNS0SUBNET
-	eDnsSubnetRec_.SourceScope = 0
-	if ip4_ := ecsIP.To4(); ip4_ != nil {
-		eDnsSubnetRec_.Family = 1
-		eDnsSubnetRec_.Address = ip4_
-		eDnsSubnetRec_.SourceNetmask = 24 // ipv4 mask
-	} else {
-		eDnsSubnetRec_.Family = 2
-		eDnsSubnetRec_.Address = ecsIP.To16()
-		eDnsSubnetRec_.SourceNetmask = 56 // ipv6 mask
+	if ecsIP != nil {
+		AddECS2ReqDnsMsg(msgReq_, ecsIP)
 	}
-	opt_ := &dns.OPT{Hdr: dns.RR_Header{
-		Name: ".", Rrtype: dns.TypeOPT}, Option: []dns.EDNS0{eDnsSubnetRec_},
-	}
-	msgReq_.Extra = []dns.RR{opt_}
 	msgBytes_, err := msgReq_.Pack()
 	defer func() { msgBytes_ = nil }()
 	if err != nil {

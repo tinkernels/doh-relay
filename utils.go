@@ -1,16 +1,40 @@
 package main
 
 import (
+	"context"
+	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"github.com/miekg/dns"
+	"io"
 	"net"
+	"net/http"
 	"net/netip"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
+
+func ConcatSlices[T any](first []T, second []T) []T {
+	n := len(first)
+	return append(first[:n:n], second...)
+}
+
+func RemoveSliceDuplicate[T string | int](sliceList []T) (list []T) {
+	allKeys_ := make(map[T]bool)
+	defer func() { allKeys_ = nil }()
+	list = []T{}
+	for _, item := range sliceList {
+		if _, value := allKeys_[item]; !value {
+			allKeys_[item] = true
+			list = append(list, item)
+		}
+	}
+	return
+}
 
 func PathExists(filePath string) bool {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -78,25 +102,38 @@ func AdjustDnsMsgTtl(msg *dns.Msg, unixTSOfArrival int64) {
 	}
 }
 
-func CommonResolverQuery(rsv Resolver, qName string, qType uint16, eDnsClientSubnet string) (
+func CommonResolverQuery(rsv Resolver, qName string, qType uint16, ecsIPsStr string) (
 	rsp ResolverRsp, err error) {
 
-	geoLocName_ := DefaultCountry
-	if ip_ := ObtainIPFromString(eDnsClientSubnet); ip_ != nil {
-		if loc_ := GeoIPLocName(ip_); loc_ != "" {
-			geoLocName_ = loc_
+	cacheKey_ := fmt.Sprintf("NAME[%s]TYPE[%d]", qName, qType)
+
+	var (
+		ips_             []net.IP
+		countryCodes_    []string
+		countryStateArr_ []string
+	)
+	ecsIPStrArr_ := strings.Split(ecsIPsStr, ",")
+	for _, s := range ecsIPStrArr_ {
+		if strings.TrimSpace(s) == "" {
+			continue
+		}
+		if ip_ := ObtainIPFromString(s); ip_ != nil {
+			country_, state_, _ := GeoIPCountryStateCity(ip_)
+			ips_ = append(ips_, ip_)
+			countryCodes_ = append(countryCodes_, country_)
+			countryStateArr_ = append(countryStateArr_, fmt.Sprintf("%s,%s", country_, state_))
 		}
 	}
-	log.Debugf("eDnsClientSubnet geoip location: %s", geoLocName_)
-	cacheKey_ := fmt.Sprintf("NAME[%s]TYPE[%d]LOC[%s]", qName, qType, geoLocName_)
+	if len(countryStateArr_) != 0 {
+		cacheKey_ = fmt.Sprintf("%sLOC[%s]", cacheKey_, strings.Join(countryStateArr_, "|"))
+	}
 	if rsv.IsUsingCache() {
-		if c_, ok_ := rsv.GetCache(cacheKey_); ok_ {
+		if rsp, ok := rsv.GetCache(cacheKey_); ok {
 			log.Infof("got cache for: %s %s, cache-key: %s", qName, dns.TypeToString[qType], cacheKey_)
-			rsp, err = c_, nil
-			return
+			return rsp, nil
 		}
 	}
-	rsp, err = rsv.Resolve(qName, qType, eDnsClientSubnet)
+	rsp, err = resolveWithECSIPs(rsv, qName, qType, ips_, countryCodes_)
 	if rsv.IsUsingCache() {
 		if err != nil || rsp == nil {
 			log.Errorf("err: %v, reply: %v", err, rsp)
@@ -116,6 +153,185 @@ func CommonResolverQuery(rsv Resolver, qName string, qType uint16, eDnsClientSub
 					},
 					cacheTtl,
 				)
+			}
+		}
+	}
+	return
+}
+
+func resolveWithECSIPs(rsv Resolver, qName string, qType uint16, ecsIPs []net.IP, ecsCountryCodes []string) (
+	rsp ResolverRsp, err error) {
+
+	if len(ecsIPs) == 0 {
+		return rsv.Resolve(qName, qType, nil)
+	}
+
+ipGEOLoop:
+	for i, ip := range ecsIPs {
+		rsp, err = rsv.Resolve(qName, qType, &ip)
+		if err != nil {
+			continue ipGEOLoop
+		}
+	qTypeSwitch:
+		switch qType {
+		case dns.TypeA:
+			{
+				for _, r := range rsp.AnswerV() {
+					switch r.(type) {
+					case *dns.A:
+						{
+							if ipA := r.(*dns.A).A; ipA != nil {
+								if c, _, _ := GeoIPCountryStateCity(ipA); c == ecsCountryCodes[i] {
+									break ipGEOLoop
+								}
+							}
+						}
+					}
+					break qTypeSwitch
+				}
+			}
+		case dns.TypeAAAA:
+			{
+				for _, r := range rsp.AnswerV() {
+					switch r.(type) {
+					case *dns.AAAA:
+						if ipAAAA := r.(*dns.AAAA).AAAA; ipAAAA != nil {
+							if c, _, _ := GeoIPCountryStateCity(ipAAAA); c == ecsCountryCodes[i] {
+								break ipGEOLoop
+							}
+						}
+					}
+					break qTypeSwitch
+				}
+			}
+		default:
+			break ipGEOLoop
+		}
+	}
+	return
+}
+
+func AddECS2ReqDnsMsg(reqMsg *dns.Msg, ip *net.IP) {
+	eDnsSubnetRec_ := new(dns.EDNS0_SUBNET)
+	eDnsSubnetRec_.Code = dns.EDNS0SUBNET
+	eDnsSubnetRec_.SourceScope = 0
+
+	if ip4_ := ip.To4(); ip4_ != nil {
+		eDnsSubnetRec_.Family = 1
+		eDnsSubnetRec_.Address = ip4_
+		eDnsSubnetRec_.SourceNetmask = 24 // ipv4 mask
+	} else {
+		eDnsSubnetRec_.Family = 2
+		eDnsSubnetRec_.Address = ip.To16()
+		eDnsSubnetRec_.SourceNetmask = 56 // ipv6 mask
+	}
+	opt_ := &dns.OPT{Hdr: dns.RR_Header{
+		Name: ".", Rrtype: dns.TypeOPT}, Option: []dns.EDNS0{eDnsSubnetRec_},
+	}
+	reqMsg.Extra = []dns.RR{opt_}
+}
+
+type CheckIPRsp struct {
+	IP      string `json:"ip"`
+	Address string `json:"address"`
+}
+
+var (
+	checkIPEndpoints = map[string]string{
+		"https://checkip.amazonaws.com":                             "plain_text",
+		"https://wq.apnic.net/ip":                                   "json",
+		"https://accountws.arin.net/public/seam/resource/rest/myip": "json",
+		"https://rdap.lacnic.net/rdap/info/myip":                    "json",
+		"https://api.myip.la/en?json":                               "json",
+	}
+)
+
+func GetIPAnswerFromResolverRsp(rsvRsp ResolverRsp) (ipStr string) {
+	for _, r := range rsvRsp.AnswerV() {
+		switch r.(type) {
+		case *dns.A:
+			{
+				if ipA := r.(*dns.A).A; ipA != nil {
+					return ipA.String()
+				}
+			}
+		case *dns.AAAA:
+			{
+				if ipAAAA := r.(*dns.AAAA).AAAA; ipAAAA != nil {
+					return ipAAAA.String()
+				}
+			}
+		}
+	}
+	return
+}
+
+func GetExIPByResolver(rsv Resolver) (ipStr string) {
+	for edp, typ := range checkIPEndpoints {
+		url_, _ := url.Parse(edp)
+		hostname_ := url_.Hostname()
+		rsvRspA_, errA_ := rsv.Resolve(hostname_, dns.TypeA, nil)
+		rsvRspAAAA_, errAAAA_ := rsv.Resolve(hostname_, dns.TypeAAAA, nil)
+		if errA_ != nil || errAAAA_ != nil {
+			continue
+		}
+		ips_ := []string{GetIPAnswerFromResolverRsp(rsvRspA_), GetIPAnswerFromResolverRsp(rsvRspAAAA_)}
+	getIPApiLoop:
+		for _, ip := range ips_ {
+			if ip == "" {
+				continue getIPApiLoop
+			}
+			tlsConfig_ := &tls.Config{
+				ServerName: hostname_,
+			}
+			timeout_ := time.Second * 9
+			dialer_ := net.Dialer{Timeout: timeout_}
+			httpClientTr_ := &http.Transport{
+				TLSClientConfig: tlsConfig_,
+				DialContext: func(ctx context.Context, network string, addr string) (net.Conn, error) {
+					_, port_, _ := net.SplitHostPort(addr)
+					addrReplaced := net.JoinHostPort(ip, port_)
+					log.Infof("check ip api dailing: network[%s], addr[%s], previous addr[%s]",
+						network, addrReplaced, addr)
+					return dialer_.DialContext(ctx, network, addrReplaced)
+				},
+			}
+			client_ := &http.Client{Transport: httpClientTr_, Timeout: timeout_}
+		getIPApiTypeSwitch:
+			switch typ {
+			case "json":
+				{
+					if rsp_, err := client_.Get(edp); err == nil {
+						if rspBytes_, err := io.ReadAll(rsp_.Body); err == nil {
+							var apiRspJson CheckIPRsp
+							err := json.Unmarshal(rspBytes_, &apiRspJson)
+							if err != nil {
+								continue getIPApiLoop
+							}
+							ipRet_, ipRetAlt_ := apiRspJson.IP, apiRspJson.Address
+							if ipRet_ != "" {
+								return ipRet_
+							} else if ipRetAlt_ != "" {
+								return ipRetAlt_
+							} else {
+								continue getIPApiLoop
+							}
+						}
+					}
+					break getIPApiTypeSwitch
+				}
+			default:
+				{
+					if rsp_, err := client_.Get(edp); err == nil {
+						if rspBytes_, err := io.ReadAll(rsp_.Body); err == nil {
+							plainText_ := string(rspBytes_[:])
+							if ipTest_ := net.ParseIP(strings.TrimSpace(plainText_)); ipTest_ != nil {
+								return ipTest_.String()
+							}
+						}
+					}
+					break getIPApiTypeSwitch
+				}
 			}
 		}
 	}

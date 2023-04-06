@@ -5,9 +5,6 @@ import (
 	"math"
 )
 
-var DefaultEDnsSubnetIP = "113.105.171.123"
-var DefaultCountry = "CN"
-
 type DohJsonResolverQ struct {
 	Name string `json:"name,omitempty"`
 	Type uint16 `json:"type,omitempty"`
@@ -96,12 +93,7 @@ func (rsp *DohJsonResolverRsp) UnixTSOfArrival() int64 {
 
 func (rsp *DohJsonResolverRsp) ObtainMinimalTTL() (ttl uint32) {
 	var minTTLInAnswer uint32 = math.MaxUint32
-	for _, r_ := range rsp.Answer {
-		if r_.TTL < minTTLInAnswer {
-			minTTLInAnswer = r_.TTL
-		}
-	}
-	for _, r_ := range rsp.Authority {
+	for _, r_ := range ConcatSlices(rsp.Answer, rsp.Authority) {
 		if r_.TTL < minTTLInAnswer {
 			minTTLInAnswer = r_.TTL
 		}
