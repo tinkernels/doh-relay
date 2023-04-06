@@ -72,9 +72,10 @@ func newConnPool4Resolver(endpoints []string) (pool connpool.Pool) {
 	}()
 	factory_ := func() (net.Conn, error) {
 		dParams_ := nextDailParams_()
+		log.Infof("new connection to: %+v", dParams_)
 		return net.Dial(dParams_[0], dParams_[1])
 	}
-	pool, err := connpool.NewChannelPool(len(dialParams_), len(dialParams_)*64, factory_)
+	pool, err := connpool.NewChannelPool(len(dialParams_)*8, len(dialParams_)*128, factory_)
 	if err != nil {
 		panic(err)
 	}
@@ -196,28 +197,7 @@ func (rsv *Dns53DnsMsgResolver) queryUpstream(qName string, qType uint16, ecsIP 
 		Name: ".", Rrtype: dns.TypeOPT}, Option: []dns.EDNS0{eDnsSubnetRec_},
 	}
 	msgReq_.Extra = []dns.RR{opt_}
-	client_ := new(dns.Client)
-	netCon_, err := rsv.netConnPool.Get(context.Background())
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	defer func() {
-		if errCon_ := netCon_.Close(); errCon_ != nil {
-			log.Error(errCon_)
-		}
-	}()
-	msgRsp_, rtt_, err := client_.ExchangeWithConn(msgReq_, &dns.Conn{Conn: netCon_})
-	if err != nil {
-		log.Error(err)
-		if pc, ok := netCon_.(*connpool.PoolConn); ok {
-			pc.MarkUnusable()
-			if errPCon_ := pc.Close(); errPCon_ != nil {
-				log.Error(errPCon_)
-			}
-		}
-		return
-	}
+	msgRsp_, rtt_ := rsv.doQueryUpstream(msgReq_)
 	rsvRsp_ := &DnsMsgResolverRsp{
 		Status:             msgRsp_.Rcode,
 		Truncated:          msgRsp_.Truncated,
@@ -243,4 +223,34 @@ func (rsv *Dns53DnsMsgResolver) queryUpstream(qName string, qType uint16, ecsIP 
 	log.Tracef("got reply from upstream: %v", msgRsp_.String())
 	rsvRsp_.UnixTSOfArrival_ = time.Now().Unix()
 	return rsvRsp_, nil
+}
+
+func (rsv *Dns53DnsMsgResolver) doQueryUpstream(reqMsg *dns.Msg) (rspMsg *dns.Msg, rtt time.Duration) {
+	client_ := new(dns.Client)
+	var (
+		netCon_ net.Conn
+		err     error
+	)
+	for {
+		netCon_, err = rsv.netConnPool.Get(context.Background())
+		if err != nil {
+			log.Errorf("error: %+v, conn: %+v", err, netCon_)
+			continue
+		} else {
+			rspMsg, rtt, err = client_.ExchangeWithConn(reqMsg, &dns.Conn{Conn: netCon_})
+			if err != nil {
+				if pc, ok := netCon_.(*connpool.PoolConn); ok {
+					pc.MarkUnusable()
+					if err = pc.Close(); err != nil {
+						log.Error(err)
+					}
+				}
+				continue
+			} else if err = netCon_.Close(); err != nil {
+				log.Error(err)
+			}
+			break
+		}
+	}
+	return
 }
