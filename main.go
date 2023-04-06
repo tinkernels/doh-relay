@@ -16,7 +16,7 @@ import (
 	"syscall"
 )
 
-const CurrentVersion = "v0.6.0"
+const CurrentVersion = "v0.7.0"
 const DefaultRelayListenAddr = "127.0.0.1:15353"
 
 var HttpClientMaxConcurrency = 64
@@ -50,6 +50,11 @@ var (
 		false,
 		"If dns53 upstream endpoints transfer with json format.",
 	)
+	dns53UpstreamDns53Flag = flag.Bool(
+		"dns53-upstream-dns53",
+		false,
+		"If dns53 upstream endpoints using dns53 protocol.",
+	)
 	relayFlag = flag.Bool(
 		"relay",
 		false,
@@ -79,6 +84,11 @@ var (
 		"relay-upstream-json",
 		false,
 		"If relay upstream endpoints transfer with json format.",
+	)
+	relayUpstreamDns53Flag = flag.Bool(
+		"relay-upstream-dns53",
+		false,
+		"If relay upstream endpoints using dns53 protocol.",
 	)
 	relayTlsFlag = flag.Bool(
 		"relay-tls",
@@ -113,6 +123,16 @@ var (
 		"cache",
 		true,
 		"Enable DoH response cache.",
+	)
+	cacheBackendFLag = flag.String(
+		"cache-backend",
+		InternalCacheType,
+		"Specify cache backend",
+	)
+	redisURIFLag = flag.String(
+		"redisuri",
+		"redis://localhost:6379/0",
+		"Specify redis uri for caching",
 	)
 	logLevelFlag = flag.String(
 		"loglevel",
@@ -223,10 +243,7 @@ func main() {
 
 // initRelayRsvAnswerer initializes the DNS-over-HTTPS upstream query service.
 func initRelayRsvAnswerer() {
-	upstreamEndpoints_ := Quad9DnsMsgEndpoints
-	if *relayUpstreamJsonFlag {
-		upstreamEndpoints_ = Quad9JsonEndpoints
-	}
+	var upstreamEndpoints_ []string
 	if tmpEndpoints_ := strings.Split(*relayUpstreamFlag, ","); *relayUpstreamFlag != "" &&
 		len(tmpEndpoints_) > 0 {
 		upstreamEndpoints_ = make([]string, len(tmpEndpoints_))
@@ -234,21 +251,30 @@ func initRelayRsvAnswerer() {
 			upstreamEndpoints_[i_] = strings.TrimSpace(tmpEndpoints_[i_])
 		}
 	}
-	var resolver DohResolver
+	var resolver Resolver
+	cacheOptions_ := &CacheOptions{cacheType: *cacheBackendFLag, redisURI: *redisURIFLag}
 	if *relayUpstreamJsonFlag {
-		resolver = NewJsonResolver(upstreamEndpoints_, *cacheFlag, *relayUpstreamHTTP3Flag)
+		if len(upstreamEndpoints_) == 0 {
+			upstreamEndpoints_ = Quad9JsonEndpoints
+		}
+		resolver = NewDohJsonResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_, *relayUpstreamHTTP3Flag)
+	} else if *relayUpstreamDns53Flag {
+		if len(upstreamEndpoints_) == 0 {
+			upstreamEndpoints_ = Quad9Dns53Endpoints
+		}
+		resolver = NewDns53DnsMsgResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
 	} else {
-		resolver = NewDnsMsgResolver(upstreamEndpoints_, *cacheFlag, *relayUpstreamHTTP3Flag)
+		if len(upstreamEndpoints_) == 0 {
+			upstreamEndpoints_ = Quad9DnsMsgEndpoints
+		}
+		resolver = NewDohDnsMsgResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_, *relayUpstreamHTTP3Flag)
 	}
 	RelayAnswerer = NewDnsMsgAnswerer(resolver)
 }
 
 // initDns53RsvAnswerer initializes the DNS-over-HTTPS upstream query service.
 func initDns53RsvAnswerer() {
-	upstreamEndpoints_ := Quad9DnsMsgEndpoints
-	if *dns53UpstreamJsonFlag {
-		upstreamEndpoints_ = Quad9JsonEndpoints
-	}
+	var upstreamEndpoints_ []string
 	if tmpEndpoints_ := strings.Split(*dns53UpstreamFlag, ","); *dns53UpstreamFlag != "" &&
 		len(tmpEndpoints_) > 0 {
 		upstreamEndpoints_ = make([]string, len(tmpEndpoints_))
@@ -256,11 +282,23 @@ func initDns53RsvAnswerer() {
 			upstreamEndpoints_[i_] = strings.TrimSpace(tmpEndpoints_[i_])
 		}
 	}
-	var resolver DohResolver
+	var resolver Resolver
+	cacheOptions_ := &CacheOptions{cacheType: *cacheBackendFLag, redisURI: *redisURIFLag}
 	if *dns53UpstreamJsonFlag {
-		resolver = NewJsonResolver(upstreamEndpoints_, *cacheFlag, *dns53UpstreamHTTP3Flag)
+		if len(upstreamEndpoints_) == 0 {
+			upstreamEndpoints_ = Quad9JsonEndpoints
+		}
+		resolver = NewDohJsonResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_, *dns53UpstreamHTTP3Flag)
+	} else if *dns53UpstreamDns53Flag {
+		if len(upstreamEndpoints_) == 0 {
+			upstreamEndpoints_ = Quad9Dns53Endpoints
+		}
+		resolver = NewDns53DnsMsgResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
 	} else {
-		resolver = NewDnsMsgResolver(upstreamEndpoints_, *cacheFlag, *dns53UpstreamHTTP3Flag)
+		if len(upstreamEndpoints_) == 0 {
+			upstreamEndpoints_ = Quad9DnsMsgEndpoints
+		}
+		resolver = NewDohDnsMsgResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_, *dns53UpstreamHTTP3Flag)
 	}
 	Dns53Answerer = NewDnsMsgAnswerer(resolver)
 }
@@ -319,12 +357,12 @@ func serveDns53Svc(c chan error) {
 		if !ListenAddrPortAvailable(url_.Host) {
 			continue
 		}
-		if strings.ToLower(url_.Scheme) != "udp" {
+		if strings.ToLower(url_.Scheme) == "udp" {
 			c_ := make(chan error)
 			dns53CHs_ = append(dns53CHs_, c_)
 			go serveDns53UDP(url_.Host, c_)
 			log.Infof("dns53 listening on %s", url_.String())
-		} else if strings.ToLower(url_.Scheme) != "tcp" {
+		} else if strings.ToLower(url_.Scheme) == "tcp" {
 			c_ := make(chan error)
 			dns53CHs_ = append(dns53CHs_, c_)
 			go serveDns53TCP(url_.Host, c_)

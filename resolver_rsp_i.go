@@ -2,10 +2,9 @@ package main
 
 import (
 	"github.com/miekg/dns"
-	"time"
 )
 
-type DohResolverRsp interface {
+type ResolverRsp interface {
 	StatusV() int
 	TruncatedV() bool
 	RecursionAvailableV() bool
@@ -13,6 +12,6 @@ type DohResolverRsp interface {
 	AnswerV() []dns.RR
 	NsV() []dns.RR
 	ExtraV() []dns.RR
-	ObtainMinimalTTL() time.Duration
-	SubtractTTL(minus uint32) DohResolverRsp
+	ObtainMinimalTTL() uint32
+	UnixTSOfArrival() int64
 }

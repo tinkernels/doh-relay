@@ -45,17 +45,50 @@ func ObtainIPFromString(ipStr string) net.IP {
 	}
 }
 
-func CommonResolverQuery(rsv DohResolver, qName string, qType uint16, eDnsClientSubnet string) (
-	rsp DohResolverRsp, err error) {
+func AdjustDnsMsgTtl(msg *dns.Msg, unixTSOfArrival int64) {
+	subtrahend_ := time.Now().Unix() - unixTSOfArrival
+	// If arrival recently, don't adjust ttl
+	if subtrahend_ < 2 {
+		return
+	}
+	subtrahendUInt32_ := uint32(subtrahend_)
+	for i_ := range msg.Answer {
+		if msg.Answer[i_].Header().Ttl < subtrahendUInt32_ {
+			msg.Answer[i_].Header().Ttl = 0
+			continue
+		}
+		targetTTL_ := msg.Answer[i_].Header().Ttl - subtrahendUInt32_
+		msg.Answer[i_].Header().Ttl = targetTTL_
+	}
+	for i_ := range msg.Ns {
+		if msg.Ns[i_].Header().Ttl < subtrahendUInt32_ {
+			msg.Ns[i_].Header().Ttl = 0
+			continue
+		}
+		targetTTL_ := msg.Ns[i_].Header().Ttl - subtrahendUInt32_
+		msg.Ns[i_].Header().Ttl = targetTTL_
+	}
+	for i_ := range msg.Extra {
+		if msg.Extra[i_].Header().Ttl < subtrahendUInt32_ {
+			msg.Extra[i_].Header().Ttl = 0
+			continue
+		}
+		targetTTL_ := msg.Extra[i_].Header().Ttl - subtrahendUInt32_
+		msg.Extra[i_].Header().Ttl = targetTTL_
+	}
+}
 
-	geoIPCountry_ := DefaultCountry
+func CommonResolverQuery(rsv Resolver, qName string, qType uint16, eDnsClientSubnet string) (
+	rsp ResolverRsp, err error) {
+
+	geoLocName_ := DefaultCountry
 	if ip_ := ObtainIPFromString(eDnsClientSubnet); ip_ != nil {
-		if country_ := GeoipCountry(ip_); country_ != "" {
-			geoIPCountry_ = country_
+		if loc_ := GeoIPLocName(ip_); loc_ != "" {
+			geoLocName_ = loc_
 		}
 	}
-	log.Debugf("eDnsClientSubnet geoip country: %s", geoIPCountry_)
-	cacheKey_ := fmt.Sprintf("NAME[%s]TYPE[%d]LOC[%s]", qName, qType, geoIPCountry_)
+	log.Debugf("eDnsClientSubnet geoip location: %s", geoLocName_)
+	cacheKey_ := fmt.Sprintf("NAME[%s]TYPE[%d]LOC[%s]", qName, qType, geoLocName_)
 	if rsv.IsUsingCache() {
 		if c_, ok_ := rsv.GetCache(cacheKey_); ok_ {
 			log.Infof("got cache for: %s %s", qName, dns.TypeToString[qType])
@@ -68,10 +101,17 @@ func CommonResolverQuery(rsv DohResolver, qName string, qType uint16, eDnsClient
 		if err != nil || rsp == nil {
 			log.Errorf("err: %v, reply: %v", err, rsp)
 		} else {
-			rsv.SetCache(cacheKey_, &DohCacheItem{
-				DohResolverResponse: rsp,
-				SetTimeUnix:         time.Now().Unix()},
-				rsp.ObtainMinimalTTL())
+			ttl_ := rsp.ObtainMinimalTTL()
+			if ttl_ > 1 {
+				rsv.SetCache(cacheKey_,
+					RspCacheItem{
+						ResolverResponse: rsp,
+						TimeUnixWhenSet:  time.Now().Unix(),
+						Ttl:              ttl_,
+					},
+					ttl_,
+				)
+			}
 		}
 	}
 	return
