@@ -22,36 +22,21 @@ func (dma *DnsMsgAnswerer) Answer(dnsReq *dns.Msg, eDnsClientSubnet string) (dns
 	} else {
 		return nil, fmt.Errorf("no question in request")
 	}
-	var (
-		waitCh_ = make(chan bool)
-		rsvRsp_ ResolverRsp
-	)
-	go func() {
-		rsvRsp_, err = dma.Resolver.Query(question_.Name, question_.Qtype, eDnsClientSubnet)
-		waitCh_ <- true
-	}()
-	<-waitCh_
+	rsvRsp_, err := dma.Resolver.Query(question_.Name, question_.Qtype, eDnsClientSubnet)
 
 	if err != nil || rsvRsp_ == nil {
 		return nil, fmt.Errorf("query error: %v", err)
 	}
-	dnsRsp = new(dns.Msg)
-	dnsRsp.SetReply(dnsReq)
-	dnsRsp.Truncated = rsvRsp_.TruncatedV()
-	dnsRsp.RecursionAvailable = rsvRsp_.RecursionAvailableV()
-	dnsRsp.AuthenticatedData = rsvRsp_.AuthenticDataV()
-	dnsRsp.Answer = rsvRsp_.AnswerV()
-	dnsRsp.Ns = rsvRsp_.NsV()
-	dnsRsp.Extra = rsvRsp_.ExtraV()
-	// Repack msg for adjust ttl.
-	rspPack_, err := dnsRsp.Pack()
-	if err != nil {
-		return nil, err
-	}
-	err = dnsRsp.Unpack(rspPack_)
-	if err != nil {
-		return nil, err
-	}
+	tmpDnsRsp_ := new(dns.Msg)
+	defer func() { tmpDnsRsp_ = nil }()
+	tmpDnsRsp_.SetReply(dnsReq)
+	tmpDnsRsp_.Truncated = rsvRsp_.TruncatedV()
+	tmpDnsRsp_.RecursionAvailable = rsvRsp_.RecursionAvailableV()
+	tmpDnsRsp_.AuthenticatedData = rsvRsp_.AuthenticDataV()
+	tmpDnsRsp_.Answer = rsvRsp_.AnswerV()
+	tmpDnsRsp_.Ns = rsvRsp_.NsV()
+	tmpDnsRsp_.Extra = rsvRsp_.ExtraV()
+	dnsRsp = tmpDnsRsp_.Copy()
 	AdjustDnsMsgTtl(dnsRsp, rsvRsp_.UnixTSOfArrival())
 	return
 }

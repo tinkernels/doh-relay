@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/IncSW/geoip2 v0.1.2
 	github.com/ReneKroon/ttlcache v1.7.0
+	github.com/buraksezer/connpool v0.6.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/gojek/heimdall/v7 v7.0.2
 	github.com/miekg/dns v1.1.53
@@ -17,7 +18,6 @@ require (
 	github.com/DataDog/datadog-go v4.8.3+incompatible // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5 // indirect
-	github.com/buraksezer/connpool v0.6.0 // indirect
 	github.com/bytedance/sonic v1.8.7 // indirect
 	github.com/cactus/go-statsd-client/statsd v0.0.0-20200423205355-cb0885a1018c // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect

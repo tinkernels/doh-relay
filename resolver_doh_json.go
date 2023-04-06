@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gojek/heimdall/v7"
 	"github.com/gojek/heimdall/v7/hystrix"
 	"github.com/miekg/dns"
 	"github.com/quic-go/quic-go/http3"
@@ -40,11 +39,11 @@ func NewDohJsonResolver(endpoints []string, useCache bool, cacheOptions *CacheOp
 			hystrix.WithMaxConcurrentRequests(HttpClientMaxConcurrency),
 			hystrix.WithRequestVolumeThreshold(40),
 			hystrix.WithErrorPercentThreshold(50),
-			hystrix.WithSleepWindow(8),
-			hystrix.WithRetryCount(5),
-			hystrix.WithRetrier(heimdall.NewRetrier(heimdall.NewExponentialBackoff(
-				time.Millisecond*50, time.Second*1, 1.8, time.Millisecond*20,
-			))),
+			hystrix.WithRetryCount(0),
+			//hystrix.WithRetrier(heimdall.NewRetrier(heimdall.NewExponentialBackoff(
+			//    time.Millisecond*50, time.Second*1, 1.8, time.Millisecond*20,
+			//))),
+			//hystrix.WithSleepWindow(8),
 		),
 		useCache:  useCache,
 		endpoints: endpoints,
@@ -84,14 +83,14 @@ func (rsv *DohJsonResolver) GetCache(key string) (rsp ResolverRsp, ok bool) {
 		return nil, false
 	}
 	if rsv.cacheType == InternalCacheType {
-		return cacheItem_.(RspCacheItem).ResolverResponse, true
+		return cacheItem_.(*RspCacheItem).ResolverResponse, true
 	} else {
 		// TODO: redis cache type
 		return nil, false
 	}
 }
 
-func (rsv *DohJsonResolver) SetCache(key string, value RspCacheItem, ttl uint32) {
+func (rsv *DohJsonResolver) SetCache(key string, value *RspCacheItem, ttl uint32) {
 	rsv.cache.Set(key, value, ttl)
 }
 

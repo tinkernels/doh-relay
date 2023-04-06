@@ -104,7 +104,7 @@ func CommonResolverQuery(rsv Resolver, qName string, qType uint16, eDnsClientSub
 			ttl_ := rsp.ObtainMinimalTTL()
 			if ttl_ > 1 {
 				rsv.SetCache(cacheKey_,
-					RspCacheItem{
+					&RspCacheItem{
 						ResolverResponse: rsp,
 						TimeUnixWhenSet:  time.Now().Unix(),
 						Ttl:              ttl_,

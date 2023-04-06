@@ -23,11 +23,13 @@ func DohGetHandler(c *gin.Context) {
 	}
 	log.Debugf("edns_client_subnet param is %v", eDnsClientSubnet_)
 	msgReqBytes_, err := base64.RawURLEncoding.DecodeString(dnsQParam_)
+	defer func() { msgReqBytes_ = nil }()
 	if err != nil {
 		log.Error(err)
 		return
 	}
 	msgReq_, msgRsp_ := new(dns.Msg), new(dns.Msg)
+	defer func() { msgReq_, msgRsp_ = nil, nil }()
 	err = msgReq_.Unpack(msgReqBytes_)
 	if err != nil {
 		log.Error(err)
@@ -42,6 +44,7 @@ func DohGetHandler(c *gin.Context) {
 		return
 	}
 	msgRspBytes_, err := msgRsp_.Pack()
+	defer func() { msgRspBytes_ = nil }()
 	if err != nil {
 		log.Error(err)
 		return

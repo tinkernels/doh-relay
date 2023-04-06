@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/gojek/heimdall/v7"
 	"github.com/gojek/heimdall/v7/hystrix"
 	"github.com/miekg/dns"
 	"github.com/quic-go/quic-go/http3"
@@ -41,11 +40,11 @@ func NewDohDnsMsgResolver(endpoints []string, useCache bool, cacheOptions *Cache
 			hystrix.WithMaxConcurrentRequests(HttpClientMaxConcurrency),
 			hystrix.WithRequestVolumeThreshold(40),
 			hystrix.WithErrorPercentThreshold(50),
-			hystrix.WithSleepWindow(8),
-			hystrix.WithRetryCount(4),
-			hystrix.WithRetrier(heimdall.NewRetrier(heimdall.NewExponentialBackoff(
-				time.Millisecond*50, time.Second*1, 1.8, time.Millisecond*20,
-			))),
+			hystrix.WithRetryCount(0),
+			//hystrix.WithRetrier(heimdall.NewRetrier(heimdall.NewExponentialBackoff(
+			//    time.Millisecond*50, time.Second*1, 1.8, time.Millisecond*20,
+			//))),
+			//hystrix.WithSleepWindow(8),
 		),
 		useCache:  useCache,
 		endpoints: endpoints,
@@ -85,14 +84,14 @@ func (rsv *DohDnsMsgResolver) GetCache(key string) (rsp ResolverRsp, ok bool) {
 		return nil, false
 	}
 	if rsv.cacheType == InternalCacheType {
-		return cacheItem_.(RspCacheItem).ResolverResponse, true
+		return cacheItem_.(*RspCacheItem).ResolverResponse, true
 	} else {
 		// TODO: redis cache type
 		return nil, false
 	}
 }
 
-func (rsv *DohDnsMsgResolver) SetCache(key string, value RspCacheItem, ttl uint32) {
+func (rsv *DohDnsMsgResolver) SetCache(key string, value *RspCacheItem, ttl uint32) {
 	rsv.cache.Set(key, value, ttl)
 }
 
@@ -171,6 +170,7 @@ ipGEOLoop:
 
 func (rsv *DohDnsMsgResolver) queryUpstream(qName string, qType uint16, ecsIP net.IP) (rsp ResolverRsp, err error) {
 	msgReq_ := new(dns.Msg)
+	defer func() { msgReq_ = nil }()
 	msgReq_.SetQuestion(dns.Fqdn(qName), qType)
 	msgReq_.RecursionDesired = true
 	eDnsSubnetRec_ := new(dns.EDNS0_SUBNET)
@@ -190,6 +190,7 @@ func (rsv *DohDnsMsgResolver) queryUpstream(qName string, qType uint16, ecsIP ne
 	}
 	msgReq_.Extra = []dns.RR{opt_}
 	msgBytes_, err := msgReq_.Pack()
+	defer func() { msgBytes_ = nil }()
 	if err != nil {
 		log.Error(err)
 		return

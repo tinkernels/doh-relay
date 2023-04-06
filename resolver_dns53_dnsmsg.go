@@ -91,14 +91,14 @@ func (rsv *Dns53DnsMsgResolver) GetCache(key string) (rsp ResolverRsp, ok bool) 
 		return nil, false
 	}
 	if rsv.cacheType == InternalCacheType {
-		return cacheItem_.(RspCacheItem).ResolverResponse, true
+		return cacheItem_.(*RspCacheItem).ResolverResponse, true
 	} else {
 		// TODO: redis cache type
 		return nil, false
 	}
 }
 
-func (rsv *Dns53DnsMsgResolver) SetCache(key string, value RspCacheItem, ttl uint32) {
+func (rsv *Dns53DnsMsgResolver) SetCache(key string, value *RspCacheItem, ttl uint32) {
 	rsv.cache.Set(key, value, ttl)
 }
 
@@ -177,6 +177,7 @@ ipGEOLoop:
 
 func (rsv *Dns53DnsMsgResolver) queryUpstream(qName string, qType uint16, ecsIP net.IP) (rsp ResolverRsp, err error) {
 	msgReq_ := new(dns.Msg)
+	defer func() { msgReq_ = nil }()
 	msgReq_.SetQuestion(dns.Fqdn(qName), qType)
 	msgReq_.RecursionDesired = true
 	eDnsSubnetRec_ := new(dns.EDNS0_SUBNET)

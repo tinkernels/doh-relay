@@ -22,6 +22,7 @@ func DohPostHandler(c *gin.Context) {
 	}
 	log.Debugf("edns_client_subnet param is %v", eDnsClientSubnet_)
 	msgReq_, msgRsp_ := new(dns.Msg), new(dns.Msg)
+	defer func() { msgReq_, msgRsp_ = nil, nil }()
 	err = msgReq_.Unpack(data_)
 	if err != nil {
 		log.Error(err)
@@ -31,6 +32,7 @@ func DohPostHandler(c *gin.Context) {
 		eDnsClientSubnet_ = strings.Join(append([]string{eDnsClientSubnet_}, *relay2ndECSFlag), ",")
 	}
 	msgRsp_, err = RelayAnswerer.Answer(msgReq_, eDnsClientSubnet_)
+	defer func() { msgRsp_ = nil }()
 	if err != nil || msgRsp_ == nil {
 		log.Error(err)
 		return
