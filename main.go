@@ -40,11 +40,6 @@ var (
 		"Upstream DoH resolver for dns53 service, "+
 			"e.g. https://149.112.112.11/dns-query,https://9.9.9.11/dns-query",
 	)
-	dns53UpstreamHTTP3Flag = flag.Bool(
-		"dns53-upstream-http3",
-		false,
-		"Transmit to upstream over HTTP/3 client.",
-	)
 	dns53UpstreamJsonFlag = flag.Bool(
 		"dns53-upstream-json",
 		false,
@@ -74,11 +69,6 @@ var (
 		"",
 		"Upstream DoH resolver for relay service, "+
 			"e.g. https://149.112.112.11/dns-query,https://9.9.9.11/dns-query",
-	)
-	relayUpstreamHTTP3Flag = flag.Bool(
-		"relay-upstream-http3",
-		false,
-		"Transmit to upstream over HTTP/3 client.",
 	)
 	relayUpstreamJsonFlag = flag.Bool(
 		"relay-upstream-json",
@@ -257,7 +247,7 @@ func initRelayRsvAnswerer() {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9JsonEndpoints
 		}
-		resolver = NewDohJsonResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_, *relayUpstreamHTTP3Flag)
+		resolver = NewDohJsonResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
 	} else if *relayUpstreamDns53Flag {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9Dns53Endpoints
@@ -267,7 +257,7 @@ func initRelayRsvAnswerer() {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9DnsMsgEndpoints
 		}
-		resolver = NewDohDnsMsgResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_, *relayUpstreamHTTP3Flag)
+		resolver = NewDohDnsMsgResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
 	}
 	RelayAnswerer = NewDnsMsgAnswerer(resolver)
 }
@@ -288,7 +278,7 @@ func initDns53RsvAnswerer() {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9JsonEndpoints
 		}
-		resolver = NewDohJsonResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_, *dns53UpstreamHTTP3Flag)
+		resolver = NewDohJsonResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
 	} else if *dns53UpstreamDns53Flag {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9Dns53Endpoints
@@ -298,7 +288,7 @@ func initDns53RsvAnswerer() {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9DnsMsgEndpoints
 		}
-		resolver = NewDohDnsMsgResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_, *dns53UpstreamHTTP3Flag)
+		resolver = NewDohDnsMsgResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
 	}
 	Dns53Answerer = NewDnsMsgAnswerer(resolver)
 }

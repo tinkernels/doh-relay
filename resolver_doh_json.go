@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gojek/heimdall/v7/hystrix"
 	"github.com/miekg/dns"
-	"github.com/quic-go/quic-go/http3"
 	"net"
 	"net/http"
 	"strings"
@@ -26,11 +25,8 @@ type DohJsonResolver struct {
 	nextEndpoint func() string
 }
 
-func NewDohJsonResolver(endpoints []string, useCache bool, cacheOptions *CacheOptions, ifHttp3 bool) (rsv *DohJsonResolver) {
+func NewDohJsonResolver(endpoints []string, useCache bool, cacheOptions *CacheOptions) (rsv *DohJsonResolver) {
 	httpClient_ := &http.Client{}
-	if ifHttp3 {
-		httpClient_.Transport = &http3.RoundTripper{}
-	}
 	rsv = &DohJsonResolver{
 		httpClient: hystrix.NewClient(
 			hystrix.WithHTTPClient(httpClient_),

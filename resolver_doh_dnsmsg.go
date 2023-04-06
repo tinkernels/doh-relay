@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gojek/heimdall/v7/hystrix"
 	"github.com/miekg/dns"
-	"github.com/quic-go/quic-go/http3"
 	"io"
 	"net"
 	"net/http"
@@ -27,11 +26,8 @@ type DohDnsMsgResolver struct {
 	nextEndpoint func() string
 }
 
-func NewDohDnsMsgResolver(endpoints []string, useCache bool, cacheOptions *CacheOptions, ifHttp3 bool) (rsv *DohDnsMsgResolver) {
+func NewDohDnsMsgResolver(endpoints []string, useCache bool, cacheOptions *CacheOptions) (rsv *DohDnsMsgResolver) {
 	httpClient_ := &http.Client{}
-	if ifHttp3 {
-		httpClient_.Transport = &http3.RoundTripper{}
-	}
 	rsv = &DohDnsMsgResolver{
 		httpClient: hystrix.NewClient(
 			hystrix.WithHTTPClient(httpClient_),
