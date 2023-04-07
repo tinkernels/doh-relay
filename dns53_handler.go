@@ -38,7 +38,15 @@ func (h *Dns53Handler) InsertDefaultECSIPStr(ipStr string) {
 }
 
 func (h *Dns53Handler) ServeDNS(w dns.ResponseWriter, msgReq *dns.Msg) {
-	msgRsp_, err := Dns53Answerer.Answer(msgReq, strings.Join(h.DefaultECSIPs, ","))
+	var tryEcsIPs_ []string
+
+	// ECS in request dns message.
+	if ecs_ := ObtainECS(msgReq); ecs_ != nil && ecs_.Address != nil {
+		tryEcsIPs_ = append(tryEcsIPs_, ecs_.Address.String())
+	}
+	tryEcsIPs_ = append(tryEcsIPs_, h.DefaultECSIPs...)
+
+	msgRsp_, err := Dns53Answerer.Answer(msgReq, strings.Join(tryEcsIPs_, ","))
 	defer func() { msgRsp_ = nil }()
 	if err != nil {
 		log.Error(err)

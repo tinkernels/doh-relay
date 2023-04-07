@@ -118,7 +118,7 @@ func (rsv *Dns53DnsMsgResolver) Resolve(qName string, qType uint16, ecsIP *net.I
 	msgReq_.SetQuestion(dns.Fqdn(qName), qType)
 	msgReq_.RecursionDesired = true
 	if ecsIP != nil {
-		AddECS2ReqDnsMsg(msgReq_, ecsIP)
+		ChangeECSInDnsMsg(msgReq_, ecsIP)
 	}
 	msgRsp_, rtt_ := rsv.doQueryUpstream(msgReq_)
 	rsvRsp_ := &DnsMsgResolverRsp{

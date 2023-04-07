@@ -105,7 +105,7 @@ func (rsv *DohDnsMsgResolver) Resolve(qName string, qType uint16, ecsIP *net.IP)
 	msgReq_.SetQuestion(dns.Fqdn(qName), qType)
 	msgReq_.RecursionDesired = true
 	if ecsIP != nil {
-		AddECS2ReqDnsMsg(msgReq_, ecsIP)
+		ChangeECSInDnsMsg(msgReq_, ecsIP)
 	}
 	msgBytes_, err := msgReq_.Pack()
 	defer func() { msgBytes_ = nil }()

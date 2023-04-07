@@ -223,7 +223,21 @@ ipGEOLoop:
 	return
 }
 
-func AddECS2ReqDnsMsg(reqMsg *dns.Msg, ip *net.IP) {
+func ObtainECS(msg *dns.Msg) (ecs *dns.EDNS0_SUBNET) {
+	var eDns0 = msg.IsEdns0()
+	if eDns0 != nil {
+		for _, o := range eDns0.Option {
+			switch o.(type) {
+			case *dns.EDNS0_SUBNET:
+				ecs = o.(*dns.EDNS0_SUBNET)
+				return
+			}
+		}
+	}
+	return
+}
+
+func ChangeECSInDnsMsg(reqMsg *dns.Msg, ip *net.IP) {
 	eDnsSubnetRec_ := new(dns.EDNS0_SUBNET)
 	eDnsSubnetRec_.Code = dns.EDNS0SUBNET
 	eDnsSubnetRec_.SourceScope = 0
@@ -237,10 +251,25 @@ func AddECS2ReqDnsMsg(reqMsg *dns.Msg, ip *net.IP) {
 		eDnsSubnetRec_.Address = ip.To16()
 		eDnsSubnetRec_.SourceNetmask = 56 // ipv6 mask
 	}
-	opt_ := &dns.OPT{Hdr: dns.RR_Header{
-		Name: ".", Rrtype: dns.TypeOPT}, Option: []dns.EDNS0{eDnsSubnetRec_},
+
+	recEdns0_ := reqMsg.IsEdns0()
+	// Replace existing.
+	if recEdns0_ != nil {
+		for i, o := range recEdns0_.Option {
+			switch o.(type) {
+			case *dns.EDNS0_SUBNET:
+				recEdns0_.Option[i] = eDnsSubnetRec_
+				return
+			}
+		}
+		recEdns0_.Option = append([]dns.EDNS0{eDnsSubnetRec_}, recEdns0_.Option...)
+	} else {
+		// Add new EDNS0 record
+		opt_ := &dns.OPT{Hdr: dns.RR_Header{
+			Name: ".", Rrtype: dns.TypeOPT}, Option: []dns.EDNS0{eDnsSubnetRec_},
+		}
+		reqMsg.Extra = []dns.RR{opt_}
 	}
-	reqMsg.Extra = []dns.RR{opt_}
 }
 
 type CheckIPApiRsp struct {

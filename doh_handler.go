@@ -73,25 +73,31 @@ func (h *DohHandler) DohPostHandler(c *gin.Context) {
 }
 
 func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
-	tryECSIPs_ := make([]string, 0)
+	var tryEcsIPs_ []string
+
+	// ECS in request dns message.
+	if ecs_ := ObtainECS(msgReq); ecs_ != nil && ecs_.Address != nil {
+		tryEcsIPs_ = append(tryEcsIPs_, ecs_.Address.String())
+	}
 
 	// Custom Header for specifying EDNS-Client-Subnet.
 	if s_ := strings.TrimSpace(c.GetHeader("X-EDNS-Client-Subnet")); s_ != "" {
 		for _, s := range strings.Split(s_, ",") {
-			if ip := ObtainIPFromString(s); ip != nil && !SliceContains(tryECSIPs_, ip.String()) {
-				tryECSIPs_ = append(tryECSIPs_, ip.String())
+			if ip := ObtainIPFromString(s); ip != nil && !SliceContains(tryEcsIPs_, ip.String()) {
+				tryEcsIPs_ = append(tryEcsIPs_, ip.String())
 			}
 		}
 	}
-	if !SliceContains(tryECSIPs_, c.ClientIP()) {
-		tryECSIPs_ = append(tryECSIPs_, c.ClientIP())
+	// Client IP
+	if !SliceContains(tryEcsIPs_, c.ClientIP()) {
+		tryEcsIPs_ = append(tryEcsIPs_, c.ClientIP())
 	}
-	tryECSIPs_ = append(tryECSIPs_, h.DefaultECSIPs...)
+	tryEcsIPs_ = append(tryEcsIPs_, h.DefaultECSIPs...)
 
-	log.Debugf("edns_client_subnet param is %+v", h.DefaultECSIPs)
+	log.Debugf("edns_client_subnet param is %+v", tryEcsIPs_)
 	msgRsp_ := new(dns.Msg)
 	defer func() { msgRsp_ = nil }()
-	msgRsp_, err := RelayAnswerer.Answer(msgReq, strings.Join(tryECSIPs_, ","))
+	msgRsp_, err := RelayAnswerer.Answer(msgReq, strings.Join(tryEcsIPs_, ","))
 	defer func() { msgRsp_ = nil }()
 	if err != nil || msgRsp_ == nil {
 		log.Error(err)
