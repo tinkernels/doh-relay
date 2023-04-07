@@ -91,7 +91,7 @@ func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
 	log.Debugf("edns_client_subnet param is %+v", h.DefaultECSIPs)
 	msgRsp_ := new(dns.Msg)
 	defer func() { msgRsp_ = nil }()
-	msgRsp_, err := RelayAnswerer.Answer(msgReq, strings.Join(h.DefaultECSIPs, ","))
+	msgRsp_, err := RelayAnswerer.Answer(msgReq, strings.Join(tryECSIPs_, ","))
 	defer func() { msgRsp_ = nil }()
 	if err != nil || msgRsp_ == nil {
 		log.Error(err)
