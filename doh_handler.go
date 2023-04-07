@@ -74,7 +74,6 @@ func (h *DohHandler) DohPostHandler(c *gin.Context) {
 
 func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
 
-	h.InsertECSIPStr(c.ClientIP())
 	// Custom Header for specifying EDNS-Client-Subnet.
 	if s_ := strings.TrimSpace(c.GetHeader("X-EDNS-Client-Subnet")); s_ != "" {
 		for _, s := range strings.Split(s_, ",") {
@@ -84,6 +83,8 @@ func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
 			}
 		}
 	}
+
+	h.InsertECSIPStr(c.ClientIP())
 
 	log.Debugf("edns_client_subnet param is %+v", h.ECSIPs)
 	msgRsp_ := new(dns.Msg)

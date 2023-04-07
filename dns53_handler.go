@@ -13,9 +13,9 @@ func NewDns53Handler() (h *Dns53Handler) {
 	h = &Dns53Handler{
 		ECSIPs: make([]string, 0),
 	}
-	exIP_ := GetExIPByResolver(Dns53Answerer.Resolver)
-	log.Infof("ExIP: %s", exIP_)
-	h.InsertECSIPStr(exIP_)
+	exitIP_ := GetExitIPByResolver(Dns53Answerer.Resolver)
+	log.Infof("Exit IP: %s", exitIP_)
+	h.InsertECSIPStr(exitIP_)
 	return
 }
 

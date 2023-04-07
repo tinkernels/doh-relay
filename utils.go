@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/miekg/dns"
 	"io"
 	"net"
 	"net/http"
@@ -16,19 +15,32 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/miekg/dns"
 )
+
+func SliceContains[T string | int | uint | int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64 |
+	float32 | float64](s []T, e T) bool {
+
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
 
 func ConcatSlices[T any](first []T, second []T) []T {
 	n := len(first)
 	return append(first[:n:n], second...)
 }
 
-func RemoveSliceDuplicate[T string | int](sliceList []T) (list []T) {
+func RemoveSliceDuplicate[T comparable](sliceList []T) (list []T) {
 	allKeys_ := make(map[T]bool)
 	defer func() { allKeys_ = nil }()
-	list = []T{}
+	list = make([]T, 0, len(sliceList))
 	for _, item := range sliceList {
-		if _, value := allKeys_[item]; !value {
+		if _, found := allKeys_[item]; !found {
 			allKeys_[item] = true
 			list = append(list, item)
 		}
@@ -49,8 +61,7 @@ func ListenAddrPortAvailable(addrPort string) bool {
 	}
 	// Match :port pattern.
 	pattern_, _ := regexp.Compile(`:[1-9][0-9]+`)
-	matched_ := pattern_.Match([]byte(addrPort))
-	if matched_ {
+	if matched_ := pattern_.Match([]byte(addrPort)); matched_ {
 		port_ := strings.TrimLeft(addrPort, ":")
 		if portNum, err := strconv.Atoi(port_); err == nil && portNum > 0 && portNum < 65536 {
 			return true
@@ -60,9 +71,10 @@ func ListenAddrPortAvailable(addrPort string) bool {
 }
 
 func ObtainIPFromString(ipStr string) net.IP {
-	if ip, _, err := net.ParseCIDR(ipStr); err == nil {
+	trimmedIPStr_ := strings.TrimSpace(ipStr)
+	if ip, _, err := net.ParseCIDR(trimmedIPStr_); err == nil {
 		return ip
-	} else if ip := net.ParseIP(ipStr); ip != nil {
+	} else if ip := net.ParseIP(trimmedIPStr_); ip != nil {
 		return ip
 	} else {
 		return nil
@@ -114,11 +126,11 @@ func CommonResolverQuery(rsv Resolver, qName string, qType uint16, ecsIPsStr str
 	)
 	ecsIPStrArr_ := strings.Split(ecsIPsStr, ",")
 	for _, s := range ecsIPStrArr_ {
-		if strings.TrimSpace(s) == "" {
-			continue
-		}
 		if ip_ := ObtainIPFromString(s); ip_ != nil {
 			country_, state_, _ := GeoIPCountryStateCity(ip_)
+			if SliceContains(countryCodes_, country_) {
+				continue
+			}
 			ips_ = append(ips_, ip_)
 			countryCodes_ = append(countryCodes_, country_)
 			countryStateArr_ = append(countryStateArr_, fmt.Sprintf("%s,%s", country_, state_))
@@ -231,18 +243,18 @@ func AddECS2ReqDnsMsg(reqMsg *dns.Msg, ip *net.IP) {
 	reqMsg.Extra = []dns.RR{opt_}
 }
 
-type CheckIPRsp struct {
+type CheckIPApiRsp struct {
 	IP      string `json:"ip"`
 	Address string `json:"address"`
 }
 
 var (
 	checkIPEndpoints = map[string]string{
-		"https://checkip.amazonaws.com":                             "plain_text",
 		"https://wq.apnic.net/ip":                                   "json",
 		"https://accountws.arin.net/public/seam/resource/rest/myip": "json",
+		"https://www.ripe.net/@@ipaddress":                          "plain_text",
 		"https://rdap.lacnic.net/rdap/info/myip":                    "json",
-		"https://api.myip.la/en?json":                               "json",
+		"https://checkip.amazonaws.com":                             "plain_text",
 	}
 )
 
@@ -266,7 +278,7 @@ func GetIPAnswerFromResolverRsp(rsvRsp ResolverRsp) (ipStr string) {
 	return
 }
 
-func GetExIPByResolver(rsv Resolver) (ipStr string) {
+func GetExitIPByResolver(rsv Resolver) (ipStr string) {
 	for edp, typ := range checkIPEndpoints {
 		url_, _ := url.Parse(edp)
 		hostname_ := url_.Hostname()
@@ -303,7 +315,7 @@ func GetExIPByResolver(rsv Resolver) (ipStr string) {
 				{
 					if rsp_, err := client_.Get(edp); err == nil {
 						if rspBytes_, err := io.ReadAll(rsp_.Body); err == nil {
-							var apiRspJson CheckIPRsp
+							var apiRspJson CheckIPApiRsp
 							err := json.Unmarshal(rspBytes_, &apiRspJson)
 							if err != nil {
 								continue getIPApiLoop
