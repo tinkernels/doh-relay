@@ -161,6 +161,14 @@ func printVersion() {
 }
 
 func main() {
+	// Exit on some signals.
+	termSig_ := make(chan os.Signal)
+	signal.Notify(termSig_, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-termSig_
+		os.Exit(0)
+	}()
+
 	flag.Usage = func() {
 		_, execPath_ := filepath.Split(os.Args[0])
 		_, _ = fmt.Fprint(os.Stderr, "DNS-over-HTTPS relay service.\n\n")
@@ -186,10 +194,6 @@ func main() {
 
 	InitGeoipReader(*maxmindCityDBFileFlag)
 
-	var (
-		serveRelayErr_ error
-		serveDns53Err_ error
-	)
 	chRelaySvc_, chDns53Svc_ := make(chan error), make(chan error)
 
 	if *relayFlag {
@@ -202,32 +206,15 @@ func main() {
 		go serveDns53Svc(chDns53Svc_)
 	}
 
-	// Exit on some signals.
-	termSig_ := make(chan os.Signal)
-	signal.Notify(termSig_, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-termSig_
-		os.Exit(0)
-	}()
-
 	// Log services exit errors.
 	if *relayFlag {
-		serveRelayErr_ = <-chRelaySvc_
+		serveRelayErr_ := <-chRelaySvc_
+		log.Infof("relay service exit: %+v", serveRelayErr_)
 	}
 	if *dns53Flag {
-		serveDns53Err_ = <-chDns53Svc_
+		serveDns53Err_ := <-chDns53Svc_
+		log.Infof("dns53 service exit: %+v", serveDns53Err_)
 	}
-
-	if serveRelayErr_ != nil {
-		log.Errorf("relay service exit: %v", serveRelayErr_)
-		os.Exit(1)
-	}
-	if serveDns53Err_ != nil {
-		log.Errorf("dns53 service exit: %v", serveDns53Err_)
-		os.Exit(1)
-	}
-	log.Infof("relay service exit: %v", serveRelayErr_)
-	log.Infof("dns53 service exit: %v", serveDns53Err_)
 	os.Exit(0)
 }
 
@@ -312,7 +299,7 @@ func serveRelaySvc(c chan error) {
 
 	dohHandler := NewDohHandler()
 	if *relay2ndECSIPFlag != "" {
-		dohHandler.AppendECSIPStr(*relay2ndECSIPFlag)
+		dohHandler.AppendDefaultECSIPStr(*relay2ndECSIPFlag)
 	}
 
 	// Routes.
@@ -342,7 +329,7 @@ func serveRelaySvc(c chan error) {
 func serveDns53Svc(c chan error) {
 	dns53Handler := NewDns53Handler()
 	if *dns532ndECSIPsFlag != "" {
-		dns53Handler.AppendECSIPStr(*dns532ndECSIPsFlag)
+		dns53Handler.AppendDefaultECSIPStr(*dns532ndECSIPsFlag)
 	}
 	dns.HandleFunc(".", dns53Handler.ServeDNS)
 	dns53ListenAddrs_ := strings.Split(*dns53ListenFlag, ",")

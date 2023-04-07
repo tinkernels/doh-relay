@@ -9,28 +9,28 @@ import (
 )
 
 type DohHandler struct {
-	ECSIPs []string
+	DefaultECSIPs []string
 }
 
 func NewDohHandler() (h *DohHandler) {
 	h = &DohHandler{
-		ECSIPs: make([]string, 0),
+		DefaultECSIPs: make([]string, 0),
 	}
 	return
 }
 
-func (h *DohHandler) AppendECSIPStr(ipStr string) {
-	if strings.TrimSpace(ipStr) == "" {
+func (h *DohHandler) AppendDefaultECSIPStr(ipStr string) {
+	if SliceContains(h.DefaultECSIPs, ipStr) || ObtainIPFromString(ipStr) == nil {
 		return
 	}
-	h.ECSIPs = append(h.ECSIPs, ipStr)
+	h.DefaultECSIPs = append(h.DefaultECSIPs, ipStr)
 }
 
-func (h *DohHandler) InsertECSIPStr(ipStr string) {
-	if strings.TrimSpace(ipStr) == "" {
+func (h *DohHandler) InsertDefaultECSIPStr(ipStr string) {
+	if SliceContains(h.DefaultECSIPs, ipStr) || ObtainIPFromString(ipStr) == nil {
 		return
 	}
-	h.ECSIPs = append([]string{ipStr}, h.ECSIPs...)
+	h.DefaultECSIPs = append([]string{ipStr}, h.DefaultECSIPs...)
 }
 
 func (h *DohHandler) DohGetHandler(c *gin.Context) {
@@ -73,23 +73,25 @@ func (h *DohHandler) DohPostHandler(c *gin.Context) {
 }
 
 func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
+	tryECSIPs_ := make([]string, 0)
 
 	// Custom Header for specifying EDNS-Client-Subnet.
 	if s_ := strings.TrimSpace(c.GetHeader("X-EDNS-Client-Subnet")); s_ != "" {
 		for _, s := range strings.Split(s_, ",") {
-			trimmedS_ := strings.TrimSpace(s)
-			if trimmedS_ != "" {
-				h.InsertECSIPStr(trimmedS_)
+			if ip := ObtainIPFromString(s); ip != nil && !SliceContains(tryECSIPs_, ip.String()) {
+				tryECSIPs_ = append(tryECSIPs_, ip.String())
 			}
 		}
 	}
+	if !SliceContains(tryECSIPs_, c.ClientIP()) {
+		tryECSIPs_ = append(tryECSIPs_, c.ClientIP())
+	}
+	tryECSIPs_ = append(tryECSIPs_, h.DefaultECSIPs...)
 
-	h.InsertECSIPStr(c.ClientIP())
-
-	log.Debugf("edns_client_subnet param is %+v", h.ECSIPs)
+	log.Debugf("edns_client_subnet param is %+v", h.DefaultECSIPs)
 	msgRsp_ := new(dns.Msg)
 	defer func() { msgRsp_ = nil }()
-	msgRsp_, err := RelayAnswerer.Answer(msgReq, strings.Join(RemoveSliceDuplicate(h.ECSIPs), ","))
+	msgRsp_, err := RelayAnswerer.Answer(msgReq, strings.Join(h.DefaultECSIPs, ","))
 	defer func() { msgRsp_ = nil }()
 	if err != nil || msgRsp_ == nil {
 		log.Error(err)

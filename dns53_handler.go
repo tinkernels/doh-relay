@@ -6,35 +6,39 @@ import (
 )
 
 type Dns53Handler struct {
-	ECSIPs []string
+	DefaultECSIPs []string
 }
 
 func NewDns53Handler() (h *Dns53Handler) {
 	h = &Dns53Handler{
-		ECSIPs: make([]string, 0),
+		DefaultECSIPs: make([]string, 0),
 	}
 	exitIP_ := GetExitIPByResolver(Dns53Answerer.Resolver)
+	if ObtainIPFromString(exitIP_) == nil || SliceContains(h.DefaultECSIPs, exitIP_) {
+		log.Errorf("Failed to get exit IP address")
+		return
+	}
 	log.Infof("Exit IP: %s", exitIP_)
-	h.InsertECSIPStr(exitIP_)
+	h.InsertDefaultECSIPStr(exitIP_)
 	return
 }
 
-func (h *Dns53Handler) AppendECSIPStr(ipStr string) {
-	if strings.TrimSpace(ipStr) == "" {
+func (h *Dns53Handler) AppendDefaultECSIPStr(ipStr string) {
+	if SliceContains(h.DefaultECSIPs, ipStr) || ObtainIPFromString(ipStr) == nil {
 		return
 	}
-	h.ECSIPs = append(h.ECSIPs, ipStr)
+	h.DefaultECSIPs = append(h.DefaultECSIPs, ipStr)
 }
 
-func (h *Dns53Handler) InsertECSIPStr(ipStr string) {
-	if strings.TrimSpace(ipStr) == "" {
+func (h *Dns53Handler) InsertDefaultECSIPStr(ipStr string) {
+	if SliceContains(h.DefaultECSIPs, ipStr) || ObtainIPFromString(ipStr) == nil {
 		return
 	}
-	h.ECSIPs = append([]string{ipStr}, h.ECSIPs...)
+	h.DefaultECSIPs = append([]string{ipStr}, h.DefaultECSIPs...)
 }
 
 func (h *Dns53Handler) ServeDNS(w dns.ResponseWriter, msgReq *dns.Msg) {
-	msgRsp_, err := Dns53Answerer.Answer(msgReq, strings.Join(RemoveSliceDuplicate(h.ECSIPs), ","))
+	msgRsp_, err := Dns53Answerer.Answer(msgReq, strings.Join(h.DefaultECSIPs, ","))
 	defer func() { msgRsp_ = nil }()
 	if err != nil {
 		log.Error(err)

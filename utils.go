@@ -299,6 +299,7 @@ func GetExitIPByResolver(rsv Resolver) (ipStr string) {
 			timeout_ := time.Second * 9
 			dialer_ := net.Dialer{Timeout: timeout_}
 			httpClientTr_ := &http.Transport{
+				Proxy:           nil,
 				TLSClientConfig: tlsConfig_,
 				DialContext: func(ctx context.Context, network string, addr string) (net.Conn, error) {
 					_, port_, _ := net.SplitHostPort(addr)
