@@ -74,6 +74,7 @@ func (h *DohHandler) DohPostHandler(c *gin.Context) {
 
 func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
 	var tryEcsIPs_ []string
+	defer func() { tryEcsIPs_ = nil }()
 
 	// ECS in request dns message.
 	if ecs_ := ObtainECS(msgReq); ecs_ != nil && ecs_.Address != nil {

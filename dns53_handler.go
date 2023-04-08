@@ -39,6 +39,7 @@ func (h *Dns53Handler) InsertDefaultECSIPStr(ipStr string) {
 
 func (h *Dns53Handler) ServeDNS(w dns.ResponseWriter, msgReq *dns.Msg) {
 	var tryEcsIPs_ []string
+	defer func() { tryEcsIPs_ = nil }()
 
 	// ECS in request dns message.
 	if ecs_ := ObtainECS(msgReq); ecs_ != nil && ecs_.Address != nil {
