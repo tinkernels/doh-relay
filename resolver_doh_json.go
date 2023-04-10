@@ -29,16 +29,16 @@ func NewDohJsonResolver(endpoints []string, useCache bool, cacheOptions *CacheOp
 	rsv = &DohJsonResolver{
 		httpClient: hystrix.NewClient(
 			hystrix.WithHTTPClient(httpClient_),
-			hystrix.WithHTTPTimeout(9*time.Second),
-			hystrix.WithHystrixTimeout(15*time.Second),
+			hystrix.WithHTTPTimeout(15*time.Second),
+			hystrix.WithHystrixTimeout(20*time.Second),
 			hystrix.WithMaxConcurrentRequests(HttpClientMaxConcurrency),
-			hystrix.WithRequestVolumeThreshold(40),
+			hystrix.WithRequestVolumeThreshold(HttpClientMaxConcurrency),
 			hystrix.WithErrorPercentThreshold(50),
 			hystrix.WithRetryCount(0),
+			hystrix.WithSleepWindow(1),
 			//hystrix.WithRetrier(heimdall.NewRetrier(heimdall.NewExponentialBackoff(
 			//    time.Millisecond*50, time.Second*1, 1.8, time.Millisecond*20,
 			//))),
-			//hystrix.WithSleepWindow(8),
 		),
 		useCache:  useCache,
 		endpoints: endpoints,
