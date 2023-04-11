@@ -26,7 +26,11 @@ type DohDnsMsgResolver struct {
 }
 
 func NewDohDnsMsgResolver(endpoints []string, useCache bool, cacheOptions *CacheOptions) (rsv *DohDnsMsgResolver) {
-	httpClient_ := &http.Client{}
+	httpClient_ := &http.Client{
+		Transport: &http.Transport{
+			Proxy: nil,
+		},
+	}
 	rsv = &DohDnsMsgResolver{
 		httpClient: hystrix.NewClient(
 			hystrix.WithHTTPClient(httpClient_),
@@ -121,7 +125,6 @@ func (rsv *DohDnsMsgResolver) Resolve(qName string, qType uint16, ecsIP *net.IP)
 	defer func() {
 		if httpRsp_ != nil && httpRsp_.Body != nil {
 			_ = httpRsp_.Body.Close()
-			httpRsp_ = nil
 		}
 	}()
 	if err != nil {

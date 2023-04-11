@@ -25,7 +25,11 @@ type DohJsonResolver struct {
 }
 
 func NewDohJsonResolver(endpoints []string, useCache bool, cacheOptions *CacheOptions) (rsv *DohJsonResolver) {
-	httpClient_ := &http.Client{}
+	httpClient_ := &http.Client{
+		Transport: &http.Transport{
+			Proxy: nil,
+		},
+	}
 	rsv = &DohJsonResolver{
 		httpClient: hystrix.NewClient(
 			hystrix.WithHTTPClient(httpClient_),
@@ -112,7 +116,6 @@ func (rsv *DohJsonResolver) Resolve(qName string, qType uint16, ecsIP *net.IP) (
 	defer func() {
 		if httpRsp_ != nil && httpRsp_.Body != nil {
 			_ = httpRsp_.Body.Close()
-			httpRsp_ = nil
 		}
 	}()
 	if err != nil {
