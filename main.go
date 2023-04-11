@@ -19,8 +19,6 @@ import (
 const CurrentVersion = "v0.7.0"
 const DefaultRelayListenAddr = "127.0.0.1:15353"
 
-var HttpClientMaxConcurrency = 64
-
 var (
 	dns53Flag = flag.Bool(
 		"dns53", false, "Enable dns53 service.",
@@ -105,10 +103,6 @@ var (
 		"",
 		"Specify maxmind city db file path.",
 	)
-	httpClientMaxConcurrencyFlag = flag.Int(
-		"http-client-max-concurrency",
-		HttpClientMaxConcurrency, "Set http client max concurrency.",
-	)
 	cacheFlag = flag.Bool(
 		"cache",
 		true,
@@ -161,11 +155,13 @@ func printVersion() {
 }
 
 func main() {
+	fmt.Println("*** Starting ***")
 	// Exit on some signals.
 	termSig_ := make(chan os.Signal)
 	signal.Notify(termSig_, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		<-termSig_
+		sig_ := <-termSig_
+		fmt.Printf("*** Terminating from signal [%+v] ***\n", sig_)
 		os.Exit(0)
 	}()
 
@@ -177,8 +173,6 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
-
-	HttpClientMaxConcurrency = *httpClientMaxConcurrencyFlag
 
 	if *versionFlag {
 		printVersion()

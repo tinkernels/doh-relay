@@ -3,11 +3,11 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/gojek/heimdall/v7/hystrix"
 	"github.com/miekg/dns"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -17,7 +17,7 @@ var Quad9DnsMsgEndpoints = []string{
 }
 
 type DohDnsMsgResolver struct {
-	httpClient   *hystrix.Client
+	httpClient   *http.Client
 	cache        Cache
 	cacheType    string
 	useCache     bool
@@ -26,25 +26,12 @@ type DohDnsMsgResolver struct {
 }
 
 func NewDohDnsMsgResolver(endpoints []string, useCache bool, cacheOptions *CacheOptions) (rsv *DohDnsMsgResolver) {
-	httpClient_ := &http.Client{
-		Transport: &http.Transport{
-			Proxy: nil,
-		},
-	}
 	rsv = &DohDnsMsgResolver{
-		httpClient: hystrix.NewClient(
-			hystrix.WithHTTPClient(httpClient_),
-			hystrix.WithHTTPTimeout(15*time.Second),
-			hystrix.WithHystrixTimeout(20*time.Second),
-			hystrix.WithMaxConcurrentRequests(HttpClientMaxConcurrency),
-			hystrix.WithRequestVolumeThreshold(HttpClientMaxConcurrency),
-			hystrix.WithErrorPercentThreshold(50),
-			hystrix.WithSleepWindow(1),
-			hystrix.WithRetryCount(0),
-			//hystrix.WithRetrier(heimdall.NewRetrier(heimdall.NewExponentialBackoff(
-			//    time.Millisecond*50, time.Second*1, 1.8, time.Millisecond*20,
-			//))),
-		),
+		httpClient: &http.Client{
+			Transport: &http.Transport{
+				Proxy: nil,
+			},
+		},
 		useCache:  useCache,
 		endpoints: endpoints,
 	}
@@ -118,10 +105,21 @@ func (rsv *DohDnsMsgResolver) Resolve(qName string, qType uint16, ecsIP *net.IP)
 		return
 	}
 	msgBase64_ := base64.RawURLEncoding.EncodeToString(msgBytes_)
-	httpRsp_, err := rsv.httpClient.Get(
-		fmt.Sprintf("%s?dns=%s", rsv.nextEndpoint(), msgBase64_),
-		http.Header{"Accept": []string{"application/dns-message"}},
-	)
+	url_, err := url.Parse(fmt.Sprintf("%s?dns=%s", rsv.nextEndpoint(), msgBase64_))
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	httpReq_ := &http.Request{
+		URL:    url_,
+		Header: map[string][]string{"Accept": {"application/dns-message"}},
+	}
+	defer func() {
+		httpReq_.URL = nil
+		httpReq_.Header = nil
+		httpReq_ = nil
+	}()
+	httpRsp_, err := rsv.httpClient.Do(httpReq_)
 	defer func() {
 		if httpRsp_ != nil && httpRsp_.Body != nil {
 			_ = httpRsp_.Body.Close()

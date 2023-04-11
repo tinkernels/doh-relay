@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gojek/heimdall/v7/hystrix"
 	"github.com/miekg/dns"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -16,7 +16,7 @@ var Quad9JsonEndpoints = []string{
 }
 
 type DohJsonResolver struct {
-	httpClient   *hystrix.Client
+	httpClient   *http.Client
 	cache        Cache
 	cacheType    string
 	useCache     bool
@@ -25,25 +25,12 @@ type DohJsonResolver struct {
 }
 
 func NewDohJsonResolver(endpoints []string, useCache bool, cacheOptions *CacheOptions) (rsv *DohJsonResolver) {
-	httpClient_ := &http.Client{
-		Transport: &http.Transport{
-			Proxy: nil,
-		},
-	}
 	rsv = &DohJsonResolver{
-		httpClient: hystrix.NewClient(
-			hystrix.WithHTTPClient(httpClient_),
-			hystrix.WithHTTPTimeout(15*time.Second),
-			hystrix.WithHystrixTimeout(20*time.Second),
-			hystrix.WithMaxConcurrentRequests(HttpClientMaxConcurrency),
-			hystrix.WithRequestVolumeThreshold(HttpClientMaxConcurrency),
-			hystrix.WithErrorPercentThreshold(50),
-			hystrix.WithRetryCount(0),
-			hystrix.WithSleepWindow(1),
-			//hystrix.WithRetrier(heimdall.NewRetrier(heimdall.NewExponentialBackoff(
-			//    time.Millisecond*50, time.Second*1, 1.8, time.Millisecond*20,
-			//))),
-		),
+		httpClient: &http.Client{
+			Transport: &http.Transport{
+				Proxy: nil,
+			},
+		},
 		useCache:  useCache,
 		endpoints: endpoints,
 	}
@@ -107,12 +94,23 @@ func (rsv *DohJsonResolver) Resolve(qName string, qType uint16, ecsIP *net.IP) (
 	if ecsIP != nil {
 		ecsP_ = fmt.Sprintf("&edns_client_subnet=%s", ecsIP.String())
 	}
-	qStr_ := fmt.Sprintf("%s?name=%s&type=%d&do=1%s&random_padding=%d",
+	urlStr_ := fmt.Sprintf("%s?name=%s&type=%d&do=1%s&random_padding=%d",
 		rsv.nextEndpoint(), qName, qType, ecsP_, time.Now().Nanosecond())
-	httpRsp_, err := rsv.httpClient.Get(
-		qStr_,
-		http.Header{"Accept": []string{"application/x-javascript,application/json"}},
-	)
+	url_, err := url.Parse(urlStr_)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	httpReq_ := &http.Request{
+		URL:    url_,
+		Header: map[string][]string{"Accept": {"application/dns-message"}},
+	}
+	defer func() {
+		httpReq_.URL = nil
+		httpReq_.Header = nil
+		httpReq_ = nil
+	}()
+	httpRsp_, err := rsv.httpClient.Do(httpReq_)
 	defer func() {
 		if httpRsp_ != nil && httpRsp_.Body != nil {
 			_ = httpRsp_.Body.Close()
