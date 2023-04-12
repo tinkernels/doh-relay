@@ -1,4 +1,4 @@
-module github.com/tinkernels/doh-relay
+module github.com/tinkernels/doh-relay/v1
 
 go 1.18
 
