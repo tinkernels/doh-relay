@@ -16,7 +16,7 @@ import (
 	"syscall"
 )
 
-const CurrentVersion = "v1.0.0-beta.1"
+const CurrentVersion = "v1.0.0-beta.2"
 const DefaultRelayListenAddr = "127.0.0.1:15353"
 
 var (
@@ -155,7 +155,7 @@ func printVersion() {
 }
 
 func main() {
-	fmt.Println("*** Starting ***")
+
 	// Exit on some signals.
 	termSig_ := make(chan os.Signal)
 	signal.Notify(termSig_, syscall.SIGINT, syscall.SIGTERM)
@@ -178,6 +178,8 @@ func main() {
 		printVersion()
 		return
 	}
+
+	fmt.Println("*** Starting ***")
 
 	// Set the loglevel
 	logLevel_, err := logger.ParseLevel(*logLevelFlag)

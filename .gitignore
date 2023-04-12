@@ -4,3 +4,5 @@
 !**/go.mod
 !**/go.sum
 !**/Makefile
+!**/*.md
+!**/LICENSE
