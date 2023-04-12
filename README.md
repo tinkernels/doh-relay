@@ -74,20 +74,20 @@ Options:
 
 - Setup a `DNS53` (listening on `tcp://0.0.0.0:53` and `udp://0.0.0.0:53`) service relaying DNS queries to `DNS-over-HTTPS` service (`https://9.9.9.11/dns-query`): 
 
-```
-doh-relay -dns53 -dns53-listen tcp://:53,udp://:53 -dns53-upstream https://9.9.9.11/dns-query -maxmind-citydb-file /usr/local/var/GeoIP/GeoLite2-City.mmdb
-```
+  ```
+  doh-relay -dns53 -dns53-listen tcp://:53,udp://:53 -dns53-upstream https://9.9.9.11/dns-query -maxmind-citydb-file /usr/local/var/GeoIP/GeoLite2-City.mmdb
+  ```
 
 - Setup a `DNS-over-HTTPS` (listening on `http://0.0.0.0:15353`) service relaying DNS queries to `DNS-over-HTTPS` service (`https://9.9.9.11/dns-query`), also with internal cache on: 
 
-```
-doh-relay -cache -relay -relay-listen :15353 -relay-upstream https://9.9.9.11/dns-query -maxmind-citydb-file /var/lib/GeoIP/GeoLite2-City.mmdb
-```
+  ```
+  doh-relay -cache -relay -relay-listen :15353 -relay-upstream https://9.9.9.11/dns-query -maxmind-citydb-file /var/lib/GeoIP/GeoLite2-City.mmdb
+  ```
 - Setup a `DNS-over-HTTPS` (listening on `http://0.0.0.0:15353`) service relaying DNS queries to `DNS53` service (`tcp://9.9.9.11:53`): 
 
-```
-doh-relay -relay -relay-listen :15353 -relay-upstream tcp://9.9.9.11:53 -relay-upstream-dns53 -maxmind-citydb-file /var/lib/GeoIP/GeoLite2-City.mmdb
-```
+  ```
+  doh-relay -relay -relay-listen :15353 -relay-upstream tcp://9.9.9.11:53 -relay-upstream-dns53 -maxmind-citydb-file /var/lib/GeoIP/GeoLite2-City.mmdb
+  ```
 
 ## Thanks
 
