@@ -1,5 +1,4 @@
-# doh-relay &middot; [![License](https://img.shields.io/hexpm/l/plug?logo=Github&style=flat)](https://github.com/tinkernels/doh-relay/blob/master/LICENSE) [![Go Report Card](https://goreportcard.com/badge/github.com/tinkernels/doh-relay)](https://goreportcard.com/report/github.com/tinkernels/doh-relay) [![Go Reference](https://pkg.go.dev/badge/github.com/tinkernels/doh-relay.svg)](https://pkg.go.dev/github.com/tinkernels/doh-relay) 
-
+# doh-relay &middot; [![License](https://img.shields.io/hexpm/l/plug?logo=Github&style=flat)](https://github.com/tinkernels/doh-relay/blob/master/LICENSE) [![Go Report Card](https://goreportcard.com/badge/github.com/tinkernels/doh-relay)](https://goreportcard.com/report/github.com/tinkernels/doh-relay)
 doh-relay is a tool for relaying DNS queries
 
 - Ability to provide `DNS53` and `DNS-over-HTTPS` services simultaneously. 
