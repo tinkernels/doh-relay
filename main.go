@@ -21,7 +21,7 @@ const DefaultRelayListenAddr = "127.0.0.1:15353"
 
 var (
 	dns53Flag = flag.Bool(
-		"dns53", false, "Enable dns53 service.",
+		"dns53", false, "Enable dns53 relay service.",
 	)
 	dns53ListenFlag = flag.String(
 		"dns53-listen",
@@ -30,73 +30,73 @@ var (
 	dns532ndECSIPsFlag = flag.String(
 		"dns53-2nd-ecs-ip",
 		"",
-		"Set dns53 secondary edns_client_subnet ip, eg: 12.34.56.78.",
+		"Set dns53 secondary EDNS-Client-Subnet ip, eg: 12.34.56.78.",
 	)
 	dns53UpstreamFlag = flag.String(
 		"dns53-upstream",
 		"",
-		"Upstream DoH resolver for dns53 service, "+
+		"Upstream DoH resolver for dns53 service (default upstream type is standard DoH), "+
 			"e.g. https://149.112.112.11/dns-query,https://9.9.9.11/dns-query",
 	)
 	dns53UpstreamJsonFlag = flag.Bool(
 		"dns53-upstream-json",
 		false,
-		"If dns53 upstream endpoints transfer with json format.",
+		"If dns53 service relays DNS queries to upstream endpoints transfer with json format.",
 	)
 	dns53UpstreamDns53Flag = flag.Bool(
 		"dns53-upstream-dns53",
 		false,
-		"If dns53 upstream endpoints using dns53 protocol.",
+		"If dns53 service relays DNS queries to upstream endpoints using dns53 protocol.",
 	)
-	relayFlag = flag.Bool(
-		"relay",
+	dohFlag = flag.Bool(
+		"doh",
 		false,
 		"Enable DoH relay service.",
 	)
-	relayListenFlag = flag.String(
-		"relay-listen",
-		DefaultRelayListenAddr, "Set relay service listen port.",
+	dohListenFlag = flag.String(
+		"doh-listen",
+		DefaultRelayListenAddr, "Set doh relay service listen port.",
 	)
-	relayPathFlag = flag.String(
-		"relay-path",
+	dohPathFlag = flag.String(
+		"doh-path",
 		"/dns-query",
 		"DNS-over-HTTPS endpoint path.",
 	)
-	relayUpstreamFlag = flag.String(
-		"relay-upstream",
+	dohUpstreamFlag = flag.String(
+		"doh-upstream",
 		"",
-		"Upstream DoH resolver for relay service, "+
+		"Upstream resolver for doh service (default upstream type is standard DoH), "+
 			"e.g. https://149.112.112.11/dns-query,https://9.9.9.11/dns-query",
 	)
-	relayUpstreamJsonFlag = flag.Bool(
-		"relay-upstream-json",
+	dohUpstreamJsonFlag = flag.Bool(
+		"doh-upstream-json",
 		false,
-		"If relay upstream endpoints transfer with json format.",
+		"If DoH service relays queries to upstream DoH endpoints transfer with json format.",
 	)
-	relayUpstreamDns53Flag = flag.Bool(
-		"relay-upstream-dns53",
+	dohUpstreamDns53Flag = flag.Bool(
+		"doh-upstream-dns53",
 		false,
-		"If relay upstream endpoints using dns53 protocol.",
+		"If DoH service relays queries to upstream endpoints using dns53 protocol.",
 	)
-	relayTlsFlag = flag.Bool(
-		"relay-tls",
+	dohTlsFlag = flag.Bool(
+		"doh-tls",
 		false,
 		"Enable DoH relay service over TLS, default on clear http.",
 	)
-	relayTlsCertFlag = flag.String(
-		"relay-tls-cert",
+	dohTlsCertFlag = flag.String(
+		"doh-tls-cert",
 		"",
 		"Specify tls cert path.",
 	)
-	relayTlsKeyFlag = flag.String(
-		"relay-tls-key",
+	dohTlsKeyFlag = flag.String(
+		"doh-tls-key",
 		"",
 		"Specify tls key path.",
 	)
-	relay2ndECSIPFlag = flag.String(
-		"relay-2nd-ecs-ip",
+	doh2ndECSIPFlag = flag.String(
+		"doh-2nd-ecs-ip",
 		"",
-		"Specify secondary edns-client-subnet ip, eg: 12.34.56.78",
+		"Specify secondary EDNS-Client-Subnet ip, eg: 12.34.56.78",
 	)
 	maxmindCityDBFileFlag = flag.String(
 		"maxmind-citydb-file",
@@ -106,7 +106,7 @@ var (
 	cacheFlag = flag.Bool(
 		"cache",
 		true,
-		"Enable DoH response cache.",
+		"Enable cache for DNS answers.",
 	)
 	cacheBackendFLag = flag.String(
 		"cache-backend",
@@ -192,9 +192,9 @@ func main() {
 
 	chRelaySvc_, chDns53Svc_ := make(chan error), make(chan error)
 
-	if *relayFlag {
-		initRelayRsvAnswerer()
-		go serveRelaySvc(chRelaySvc_)
+	if *dohFlag {
+		initDohRsvAnswerer()
+		go serveDohSvc(chRelaySvc_)
 	}
 
 	if *dns53Flag {
@@ -203,7 +203,7 @@ func main() {
 	}
 
 	// Log services exit errors.
-	if *relayFlag {
+	if *dohFlag {
 		serveRelayErr_ := <-chRelaySvc_
 		log.Infof("relay service exit: %+v", serveRelayErr_)
 	}
@@ -214,10 +214,10 @@ func main() {
 	os.Exit(0)
 }
 
-// initRelayRsvAnswerer initializes the DNS-over-HTTPS upstream query service.
-func initRelayRsvAnswerer() {
+// initDohRsvAnswerer initializes the DNS-over-HTTPS upstream query service.
+func initDohRsvAnswerer() {
 	var upstreamEndpoints_ []string
-	if tmpEndpoints_ := strings.Split(*relayUpstreamFlag, ","); *relayUpstreamFlag != "" &&
+	if tmpEndpoints_ := strings.Split(*dohUpstreamFlag, ","); *dohUpstreamFlag != "" &&
 		len(tmpEndpoints_) > 0 {
 		upstreamEndpoints_ = make([]string, len(tmpEndpoints_))
 		for i_ := range tmpEndpoints_ {
@@ -226,12 +226,12 @@ func initRelayRsvAnswerer() {
 	}
 	var resolver Resolver
 	cacheOptions_ := &CacheOptions{cacheType: *cacheBackendFLag, redisURI: *redisURIFLag}
-	if *relayUpstreamJsonFlag {
+	if *dohUpstreamJsonFlag {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9JsonEndpoints
 		}
 		resolver = NewDohJsonResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
-	} else if *relayUpstreamDns53Flag {
+	} else if *dohUpstreamDns53Flag {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9Dns53Endpoints
 		}
@@ -276,7 +276,7 @@ func initDns53RsvAnswerer() {
 	Dns53Answerer = NewDnsMsgAnswerer(resolver)
 }
 
-func serveRelaySvc(c chan error) {
+func serveDohSvc(c chan error) {
 	// Set Gin mode referred to loglevel.
 	var err error
 	if logLevel_, err := logger.ParseLevel(*logLevelFlag); err == nil && logLevel_ >= logger.DebugLevel {
@@ -294,26 +294,26 @@ func serveRelaySvc(c chan error) {
 	router_.RemoteIPHeaders = []string{"X-Real-IP"}
 
 	dohHandler := NewDohHandler()
-	if *relay2ndECSIPFlag != "" {
-		dohHandler.AppendDefaultECSIPStr(*relay2ndECSIPFlag)
+	if *doh2ndECSIPFlag != "" {
+		dohHandler.AppendDefaultECSIPStr(*doh2ndECSIPFlag)
 	}
 
 	// Routes.
-	router_.GET(*relayPathFlag, dohHandler.DohGetHandler)
-	router_.POST(*relayPathFlag, dohHandler.DohPostHandler)
+	router_.GET(*dohPathFlag, dohHandler.DohGetHandler)
+	router_.POST(*dohPathFlag, dohHandler.DohPostHandler)
 
 	listenAddr_ := DefaultRelayListenAddr
-	if ListenAddrPortAvailable(*relayListenFlag) {
-		listenAddr_ = *relayListenFlag
+	if ListenAddrPortAvailable(*dohListenFlag) {
+		listenAddr_ = *dohListenFlag
 	}
-	if *relayTlsFlag {
-		if !PathExists(*relayTlsCertFlag) || !PathExists(*relayTlsKeyFlag) {
+	if *dohTlsFlag {
+		if !PathExists(*dohTlsCertFlag) || !PathExists(*dohTlsKeyFlag) {
 			c <- fmt.Errorf("missing tls cert or key")
 			return
 		}
 		err = router_.RunTLS(listenAddr_,
-			*relayTlsCertFlag,
-			*relayTlsKeyFlag,
+			*dohTlsCertFlag,
+			*dohTlsKeyFlag,
 		)
 		c <- err
 		return
