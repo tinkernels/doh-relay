@@ -16,7 +16,7 @@ import (
 	"syscall"
 )
 
-const CurrentVersion = "v1.0.0-beta.2"
+const CurrentVersion = "v1.0.0-beta.3"
 const DefaultRelayListenAddr = "127.0.0.1:15353"
 
 var (
