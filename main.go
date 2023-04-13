@@ -35,7 +35,7 @@ var (
 	dns53UpstreamFlag = flag.String(
 		"dns53-upstream",
 		"",
-		"Upstream DoH resolver for dns53 service (default upstream type is standard DoH), "+
+		"Upstream resolver for dns53 service (default upstream type is standard DoH), "+
 			"e.g. https://149.112.112.11/dns-query,https://9.9.9.11/dns-query",
 	)
 	dns53UpstreamJsonFlag = flag.Bool(

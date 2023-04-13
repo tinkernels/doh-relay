@@ -34,7 +34,7 @@ Options:
   -dns53-listen string
         Set dns53 service listen port. (default "udp://:53,tcp://:53")
   -dns53-upstream string
-        Upstream DoH resolver for dns53 service (default upstream type is standard DoH), e.g. https://149.112.112.11/dns-query,https://9.9.9.11/dns-query
+        Upstream resolver for dns53 service (default upstream type is standard DoH), e.g. https://149.112.112.11/dns-query,https://9.9.9.11/dns-query
   -dns53-upstream-dns53
         If dns53 service relays DNS queries to upstream endpoints using dns53 protocol.
   -dns53-upstream-json
