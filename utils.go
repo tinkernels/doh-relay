@@ -221,6 +221,7 @@ func resolveWithECSIPs(rsv Resolver, qName string, qType uint16, ecsIPs []net.IP
 			} else {
 				resultChan <- &Result{Ok: false, Err: err}
 			}
+			close(resultChan)
 		}(ip, ecsCountryCodes[i], resultChanArr_[i])
 	}
 
@@ -236,6 +237,9 @@ func resolveWithECSIPs(rsv Resolver, qName string, qType uint16, ecsIPs []net.IP
 		} else if !ok {
 			continue
 		} else {
+			for j := range resultChanArr_ {
+				close(resultChanArr_[j])
+			}
 			return lastResult_, nil
 		}
 	}
