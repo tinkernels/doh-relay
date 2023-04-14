@@ -246,7 +246,7 @@ func RemoveECSInDnsMsg(msg *dns.Msg) {
 			switch o.(type) {
 			case *dns.EDNS0_SUBNET:
 				ecsIdx_ = i
-				return
+				break
 			}
 		}
 		if ecsIdx_ >= 0 {
