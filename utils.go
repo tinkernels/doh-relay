@@ -237,7 +237,25 @@ func ObtainECS(msg *dns.Msg) (ecs *dns.EDNS0_SUBNET) {
 	return
 }
 
-func ChangeECSInDnsMsg(reqMsg *dns.Msg, ip *net.IP) {
+func RemoveECSInDnsMsg(msg *dns.Msg) {
+	recEdns0_ := msg.IsEdns0()
+	// Replace existing.
+	if recEdns0_ != nil {
+		ecsIdx_ := -1
+		for i, o := range recEdns0_.Option {
+			switch o.(type) {
+			case *dns.EDNS0_SUBNET:
+				ecsIdx_ = i
+				return
+			}
+		}
+		if ecsIdx_ >= 0 {
+			recEdns0_.Option = append(recEdns0_.Option[:ecsIdx_], recEdns0_.Option[ecsIdx_+1:]...)
+		}
+	}
+}
+
+func ChangeECSInDnsMsg(msg *dns.Msg, ip *net.IP) {
 	eDnsSubnetRec_ := new(dns.EDNS0_SUBNET)
 	eDnsSubnetRec_.Code = dns.EDNS0SUBNET
 	eDnsSubnetRec_.SourceScope = 0
@@ -252,7 +270,7 @@ func ChangeECSInDnsMsg(reqMsg *dns.Msg, ip *net.IP) {
 		eDnsSubnetRec_.SourceNetmask = 56 // ipv6 mask
 	}
 
-	recEdns0_ := reqMsg.IsEdns0()
+	recEdns0_ := msg.IsEdns0()
 	// Replace existing.
 	if recEdns0_ != nil {
 		for i, o := range recEdns0_.Option {
@@ -268,7 +286,7 @@ func ChangeECSInDnsMsg(reqMsg *dns.Msg, ip *net.IP) {
 		opt_ := &dns.OPT{Hdr: dns.RR_Header{
 			Name: ".", Rrtype: dns.TypeOPT}, Option: []dns.EDNS0{eDnsSubnetRec_},
 		}
-		reqMsg.Extra = []dns.RR{opt_}
+		msg.Extra = []dns.RR{opt_}
 	}
 }
 

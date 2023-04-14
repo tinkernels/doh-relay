@@ -77,7 +77,8 @@ func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
 	defer func() { tryEcsIPs_ = nil }()
 
 	// ECS in request dns message.
-	if ecs_ := ObtainECS(msgReq); ecs_ != nil && ecs_.Address != nil {
+	ecs_ := ObtainECS(msgReq)
+	if ecs_ != nil && ecs_.Address != nil {
 		tryEcsIPs_ = append(tryEcsIPs_, ecs_.Address.String())
 	}
 
@@ -103,6 +104,12 @@ func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
 	if err != nil || msgRsp_ == nil {
 		log.Error(err)
 		return
+	}
+	// Restore request ECS.
+	if ecs_ == nil {
+		RemoveECSInDnsMsg(msgRsp_)
+	} else {
+		ChangeECSInDnsMsg(msgRsp_, &ecs_.Address)
 	}
 	msgRspBytes_, err := msgRsp_.Pack()
 	if err != nil {

@@ -42,13 +42,20 @@ func (h *Dns53Handler) ServeDNS(w dns.ResponseWriter, msgReq *dns.Msg) {
 	defer func() { tryEcsIPs_ = nil }()
 
 	// ECS in request dns message.
-	if ecs_ := ObtainECS(msgReq); ecs_ != nil && ecs_.Address != nil {
+	ecs_ := ObtainECS(msgReq)
+	if ecs_ != nil && ecs_.Address != nil {
 		tryEcsIPs_ = append(tryEcsIPs_, ecs_.Address.String())
 	}
 	tryEcsIPs_ = append(tryEcsIPs_, h.DefaultECSIPs...)
 
 	msgRsp_, err := Dns53Answerer.Answer(msgReq, strings.Join(tryEcsIPs_, ","))
 	defer func() { msgRsp_ = nil }()
+	// Restore request ECS.
+	if ecs_ == nil {
+		RemoveECSInDnsMsg(msgRsp_)
+	} else {
+		ChangeECSInDnsMsg(msgRsp_, &ecs_.Address)
+	}
 	if err != nil {
 		log.Error(err)
 		return
