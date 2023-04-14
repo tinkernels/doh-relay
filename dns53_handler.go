@@ -50,15 +50,15 @@ func (h *Dns53Handler) ServeDNS(w dns.ResponseWriter, msgReq *dns.Msg) {
 
 	msgRsp_, err := Dns53Answerer.Answer(msgReq, strings.Join(tryEcsIPs_, ","))
 	defer func() { msgRsp_ = nil }()
+	if err != nil {
+		log.Error(err)
+		return
+	}
 	// Restore request ECS.
 	if ecs_ == nil {
 		RemoveECSInDnsMsg(msgRsp_)
 	} else {
 		ChangeECSInDnsMsg(msgRsp_, &ecs_.Address)
-	}
-	if err != nil {
-		log.Error(err)
-		return
 	}
 	err = w.WriteMsg(msgRsp_)
 	if err != nil {
