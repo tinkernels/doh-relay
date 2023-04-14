@@ -174,53 +174,78 @@ func CommonResolverQuery(rsv Resolver, qName string, qType uint16, ecsIPsStr str
 func resolveWithECSIPs(rsv Resolver, qName string, qType uint16, ecsIPs []net.IP, ecsCountryCodes []string) (
 	rsp ResolverRsp, err error) {
 
-	if len(ecsIPs) == 0 {
+	if len(ecsIPs) == 0 || (qType != dns.TypeA && qType != dns.TypeAAAA) {
 		return rsv.Resolve(qName, qType, nil)
 	}
 
-ipGEOLoop:
+	type Result struct {
+		Rsp ResolverRsp
+		Ok  bool
+		Err error
+	}
+
+	// Create a channel to receive the results of each goroutine.
+	resultChanArr_ := make([]chan *Result, len(ecsIPs))
+	for i := range resultChanArr_ {
+		resultChanArr_[i] = make(chan *Result)
+	}
+
+	// Launch a goroutine for each IP address for A, AAAA query.
 	for i, ip := range ecsIPs {
-		rsp, err = rsv.Resolve(qName, qType, &ip)
+		go func(ip net.IP, countryCode string, resultChan chan *Result) {
+			r, err := rsv.Resolve(qName, qType, &ip)
+			if err == nil {
+				// Check if the response matches the expected country code.
+				switch qType {
+				case dns.TypeA:
+					for _, a := range r.AnswerV() {
+						if aA, ok := a.(*dns.A); ok {
+							if c, _, _ := GeoIPCountryStateCity(aA.A); c == countryCode {
+								resultChan <- &Result{Rsp: r, Ok: true}
+								return
+							}
+						}
+					}
+					resultChan <- &Result{Rsp: r, Ok: false}
+				case dns.TypeAAAA:
+					for _, aaaa := range r.AnswerV() {
+						if aaaaA, ok := aaaa.(*dns.AAAA); ok {
+							if c, _, _ := GeoIPCountryStateCity(aaaaA.AAAA); c == countryCode {
+								resultChan <- &Result{Rsp: r, Ok: true}
+								return
+							}
+						}
+					}
+					resultChan <- &Result{Rsp: r, Ok: false}
+				}
+			} else {
+				resultChan <- &Result{Ok: false, Err: err}
+			}
+		}(ip, ecsCountryCodes[i], resultChanArr_[i])
+	}
+
+	// Wait for all the results to come in.
+	var lastResult_ ResolverRsp
+	for i := 0; i < len(ecsIPs); i++ {
+		r := <-resultChanArr_[i]
+		rsp, ok, err := r.Rsp, r.Ok, r.Err
+		lastResult_ = rsp
 		if err != nil {
-			continue ipGEOLoop
-		}
-	qTypeSwitch:
-		switch qType {
-		case dns.TypeA:
-			{
-				for _, r := range rsp.AnswerV() {
-					switch r.(type) {
-					case *dns.A:
-						{
-							if ipA := r.(*dns.A).A; ipA != nil {
-								if c, _, _ := GeoIPCountryStateCity(ipA); c == ecsCountryCodes[i] {
-									break ipGEOLoop
-								}
-							}
-						}
-					}
-					break qTypeSwitch
-				}
-			}
-		case dns.TypeAAAA:
-			{
-				for _, r := range rsp.AnswerV() {
-					switch r.(type) {
-					case *dns.AAAA:
-						if ipAAAA := r.(*dns.AAAA).AAAA; ipAAAA != nil {
-							if c, _, _ := GeoIPCountryStateCity(ipAAAA); c == ecsCountryCodes[i] {
-								break ipGEOLoop
-							}
-						}
-					}
-					break qTypeSwitch
-				}
-			}
-		default:
-			break ipGEOLoop
+			log.Error(err)
+			continue
+		} else if !ok {
+			continue
+		} else {
+			return lastResult_, nil
 		}
 	}
-	return
+
+	if lastResult_ != nil {
+		return lastResult_, nil
+	} else {
+		// If all resolves are failed, return nil
+		return nil, fmt.Errorf("no result for %s %s", qName, dns.TypeToString[qType])
+	}
 }
 
 func ObtainECS(msg *dns.Msg) (ecs *dns.EDNS0_SUBNET) {
