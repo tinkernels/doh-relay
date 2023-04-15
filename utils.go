@@ -128,7 +128,7 @@ func CommonResolverQuery(rsv Resolver, qName string, qType uint16, ecsIPsStr str
 	for _, s := range ecsIPStrArr_ {
 		if ip_ := ObtainIPFromString(s); ip_ != nil {
 			country_, state_, _ := GeoIPCountryStateCity(ip_)
-			if SliceContains(countryCodes_, country_) || IsNameInJailOfCountry(qName, country_) {
+			if SliceContains(countryCodes_, country_) {
 				continue
 			}
 			ips_ = append(ips_, ip_)
@@ -143,6 +143,13 @@ func CommonResolverQuery(rsv Resolver, qName string, qType uint16, ecsIPsStr str
 		if rsp, ok := rsv.GetCache(cacheKey_); ok {
 			log.Infof("got cache for: %s %s, cache-key: %s", qName, dns.TypeToString[qType], cacheKey_)
 			return rsp, nil
+		}
+	}
+	// Check names in jail of countries
+	for i := 0; i < len(countryCodes_); i++ {
+		if IsNameInJailOfCountry(qName, countryCodes_[i]) {
+			ips_ = append(ips_[:i], ips_[i+1:]...)
+			countryCodes_ = append(countryCodes_[:i], countryCodes_[i+1:]...)
 		}
 	}
 	rsp, err = resolveWithECSIPs(rsv, qName, qType, ips_, countryCodes_)
@@ -251,7 +258,7 @@ func resolveWithECSIPs(rsv Resolver, qName string, qType uint16, ecsIPs []net.IP
 				resultChanArrClosed_ = true
 				for _, c := range resultChanArr_ {
 					select {
-					case <-c:
+					case _ = <-c:
 					default:
 						close(c)
 					}

@@ -119,25 +119,26 @@ func IsNameInJailOfCountry(name, countryCode string) bool {
 	if !ok {
 		return false
 	}
-	chRet_, ret_, chFinal_ := make(chan bool, len(regexps_)), false, make(chan bool)
+	chRet_, chFinal_, ret_ := make(chan bool, len(regexps_)), make(chan bool), false
 	go func() {
 		for i := 0; i < len(regexps_); i++ {
 			if <-chRet_ {
 				ret_ = true
-				close(chRet_)
+			drainChannelLoop:
+				for {
+					select {
+					case _ = <-chRet_:
+					default:
+						break drainChannelLoop
+					}
+				}
 				break
 			}
 		}
 		chFinal_ <- true
 	}()
 	for _, regexp_ := range regexps_ {
-		if ret_ {
-			break
-		}
 		go func(re *regexp.Regexp) {
-			if ret_ {
-				return
-			}
 			matched_ := re.MatchString(name)
 			if ret_ {
 				return
