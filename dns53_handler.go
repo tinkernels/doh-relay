@@ -24,17 +24,15 @@ func NewDns53Handler() (h *Dns53Handler) {
 }
 
 func (h *Dns53Handler) AppendDefaultECSIPStr(ipStr string) {
-	if SliceContains(h.DefaultECSIPs, ipStr) || ObtainIPFromString(ipStr) == nil {
-		return
+	if ip := ObtainIPFromString(ipStr); ip != nil && !SliceContains(h.DefaultECSIPs, ip.String()) {
+		h.DefaultECSIPs = append(h.DefaultECSIPs, ip.String())
 	}
-	h.DefaultECSIPs = append(h.DefaultECSIPs, ipStr)
 }
 
 func (h *Dns53Handler) InsertDefaultECSIPStr(ipStr string) {
-	if SliceContains(h.DefaultECSIPs, ipStr) || ObtainIPFromString(ipStr) == nil {
-		return
+	if ip := ObtainIPFromString(ipStr); ip != nil && !SliceContains(h.DefaultECSIPs, ip.String()) {
+		h.DefaultECSIPs = append([]string{ip.String()}, h.DefaultECSIPs...)
 	}
-	h.DefaultECSIPs = append([]string{ipStr}, h.DefaultECSIPs...)
 }
 
 func (h *Dns53Handler) ServeDNS(w dns.ResponseWriter, msgReq *dns.Msg) {

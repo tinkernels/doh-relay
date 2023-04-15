@@ -20,17 +20,15 @@ func NewDohHandler() (h *DohHandler) {
 }
 
 func (h *DohHandler) AppendDefaultECSIPStr(ipStr string) {
-	if SliceContains(h.DefaultECSIPs, ipStr) || ObtainIPFromString(ipStr) == nil {
-		return
+	if ip := ObtainIPFromString(ipStr); ip != nil && !SliceContains(h.DefaultECSIPs, ip.String()) {
+		h.DefaultECSIPs = append(h.DefaultECSIPs, ip.String())
 	}
-	h.DefaultECSIPs = append(h.DefaultECSIPs, ipStr)
 }
 
 func (h *DohHandler) InsertDefaultECSIPStr(ipStr string) {
-	if SliceContains(h.DefaultECSIPs, ipStr) || ObtainIPFromString(ipStr) == nil {
-		return
+	if ip := ObtainIPFromString(ipStr); ip != nil && !SliceContains(h.DefaultECSIPs, ip.String()) {
+		h.DefaultECSIPs = append([]string{ip.String()}, h.DefaultECSIPs...)
 	}
-	h.DefaultECSIPs = append([]string{ipStr}, h.DefaultECSIPs...)
 }
 
 func (h *DohHandler) DohGetHandler(c *gin.Context) {
