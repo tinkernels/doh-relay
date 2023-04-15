@@ -185,7 +185,7 @@ func resolveWithECSIPs(rsv Resolver, qName string, qType uint16, ecsIPs []net.IP
 	}
 
 	// Create a channel to receive the results of each goroutine.
-	resultChanArr_ := make([]chan *Result, len(ecsIPs))
+	resultChanArr_, resultChanArrClosed_ := make([]chan *Result, len(ecsIPs)), false
 	for i := range resultChanArr_ {
 		resultChanArr_[i] = make(chan *Result)
 	}
@@ -198,30 +198,39 @@ func resolveWithECSIPs(rsv Resolver, qName string, qType uint16, ecsIPs []net.IP
 				// Check if the response matches the expected country code.
 				switch qType {
 				case dns.TypeA:
-					for _, a := range r.AnswerV() {
-						if aA, ok := a.(*dns.A); ok {
-							if c, _, _ := GeoIPCountryStateCity(aA.A); c == countryCode {
-								resultChan <- &Result{Rsp: r, Ok: true}
+					for _, rr_ := range r.AnswerV() {
+						if rrA_, ok := rr_.(*dns.A); ok {
+							if c, _, _ := GeoIPCountryStateCity(rrA_.A); c == countryCode {
+								if !resultChanArrClosed_ {
+									resultChan <- &Result{Rsp: r, Ok: true}
+								}
 								return
 							}
 						}
 					}
-					resultChan <- &Result{Rsp: r, Ok: false}
+					if !resultChanArrClosed_ {
+						resultChan <- &Result{Rsp: r, Ok: false}
+					}
 				case dns.TypeAAAA:
-					for _, aaaa := range r.AnswerV() {
-						if aaaaA, ok := aaaa.(*dns.AAAA); ok {
-							if c, _, _ := GeoIPCountryStateCity(aaaaA.AAAA); c == countryCode {
-								resultChan <- &Result{Rsp: r, Ok: true}
+					for _, rr_ := range r.AnswerV() {
+						if rrAAAA_, ok := rr_.(*dns.AAAA); ok {
+							if c, _, _ := GeoIPCountryStateCity(rrAAAA_.AAAA); c == countryCode {
+								if !resultChanArrClosed_ {
+									resultChan <- &Result{Rsp: r, Ok: true}
+								}
 								return
 							}
 						}
 					}
-					resultChan <- &Result{Rsp: r, Ok: false}
+					if !resultChanArrClosed_ {
+						resultChan <- &Result{Rsp: r, Ok: false}
+					}
 				}
 			} else {
-				resultChan <- &Result{Ok: false, Err: err}
+				if !resultChanArrClosed_ {
+					resultChan <- &Result{Ok: false, Err: err}
+				}
 			}
-			close(resultChan)
 		}(ip, ecsCountryCodes[i], resultChanArr_[i])
 	}
 
@@ -237,9 +246,17 @@ func resolveWithECSIPs(rsv Resolver, qName string, qType uint16, ecsIPs []net.IP
 		} else if !ok {
 			continue
 		} else {
-			for j := range resultChanArr_ {
-				close(resultChanArr_[j])
-			}
+			// close the channel to indicate that the goroutine is done.
+			go func() {
+				resultChanArrClosed_ = true
+				for _, c := range resultChanArr_ {
+					select {
+					case <-c:
+					default:
+						close(c)
+					}
+				}
+			}()
 			return lastResult_, nil
 		}
 	}
