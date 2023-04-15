@@ -13,7 +13,7 @@ dns53:
   upstream: tcp://8.8.8.8:53,tcp://8.8.8.8:53
   # Possible value: doh, dns53, doh_json
   upstream_proto: dns53
-  ecs_ip_2nd: 192.0.2.1
+  2nd_ecs_ip: 192.0.2.1
 doh:
   enabled: true
   listen: 127.0.0.1:443
@@ -21,13 +21,45 @@ doh:
   # Possible value: doh, dns53, doh_json
   upstream_proto: doh
   path: /dns-query
-  ecs_ip_2nd: 192.0.2.1
+  2nd_ecs_ip: 192.0.2.1
   use_tls: true
   tls_cert_file: /path/to/cert.pem
   tls_key_file: /path/to/key.pem
 # when query name matched name_regex, will skip the query with ecs ips that have specified geo country codes
 names_in_jail:
+  # apple
   - name_regex: ^([^\.\s]+\.)*apple\.com\.$
-    country_codes: RU
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*cdn-apple\.com\.$
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*apple-cloudkit\.com\.$
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*icloud.\.com\.$
+    country_codes: CN
+  # linkedin
   - name_regex: ^([^\.\s]+\.)*linkedin\.com\.$
-    country_codes: CN,RU
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*licdn\.com\.$
+    country_codes: CN
+  # google
+  - name_regex: ^([^\.\s]+\.)*google-analytics\.com\.$
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*doubleclick\.net\.$
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*googletagmanager\.com\.$
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*googletagservices\.com\.$
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*google\.com\.$
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*googleapis\.com\.$
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*googleusercontent\.com\.$
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*gstatic\.com\.$
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*gmail\.com\.$
+    country_codes: CN
+  - name_regex: ^([^\.\s]+\.)*googlemail\.com\.$
+    country_codes: CN
+

@@ -380,7 +380,9 @@ func serveDohSvc(c chan error) {
 func serveDns53Svc(c chan error) {
 	dns53Handler := NewDns53Handler()
 	if ExecConfig.Dns53Config.EcsIP2nd != "" {
-		dns53Handler.AppendDefaultECSIPStr(ExecConfig.Dns53Config.EcsIP2nd)
+		for _, ip_ := range strings.Split(ExecConfig.DohConfig.EcsIP2nd, ",") {
+			dns53Handler.AppendDefaultECSIPStr(ip_)
+		}
 	}
 	// Use doh relay service to add high priority exit ip.
 	if ExecConfig.Dns53Config.UpstreamProto != RelayUpstreamProtoDns53 {
