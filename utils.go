@@ -443,3 +443,21 @@ func GetExitIPByResolver(rsv Resolver) (ipStr string) {
 	}
 	return
 }
+
+func HTTPGetString(urlStr string) (string, error) {
+	resp_, err_ := http.Get(urlStr)
+	if err_ != nil {
+		return "", err_
+	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp_.Body)
+	if resp_.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("http get error: %s", resp_.Status)
+	}
+	bodyBytes_, err_ := io.ReadAll(resp_.Body)
+	if err_ != nil {
+		return "", err_
+	}
+	return string(bodyBytes_[:]), nil
+}

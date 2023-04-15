@@ -19,7 +19,7 @@ func NewDns53Handler() (h *Dns53Handler) {
 		return
 	}
 	log.Infof("Exit IP: %s", exitIP_)
-	h.InsertDefaultECSIPStr(exitIP_)
+	h.AppendDefaultECSIPStr(exitIP_)
 	return
 }
 

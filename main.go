@@ -16,7 +16,7 @@ import (
 	"syscall"
 )
 
-const CurrentVersion = "v1.0.0-beta.7"
+const CurrentVersion = "v1.0.0-beta.8"
 const DefaultRelayListenAddr = "127.0.0.1:15353"
 
 var (
@@ -295,11 +295,16 @@ func serveDohSvc(c chan error) {
 
 	dohHandler := NewDohHandler()
 	if *doh2ndECSIPFlag != "" {
-		dohHandler.AppendDefaultECSIPStr(*doh2ndECSIPFlag)
+		for _, ip_ := range strings.Split(*doh2ndECSIPFlag, ",") {
+			dohHandler.AppendDefaultECSIPStr(ip_)
+		}
 	}
 
 	// Routes.
 	router_.GET(*dohPathFlag, dohHandler.DohGetHandler)
+	router_.GET("/checkip", func(context *gin.Context) {
+		_, err = context.Writer.WriteString(context.ClientIP())
+	})
 	router_.POST(*dohPathFlag, dohHandler.DohPostHandler)
 
 	listenAddr_ := DefaultRelayListenAddr
@@ -326,6 +331,17 @@ func serveDns53Svc(c chan error) {
 	dns53Handler := NewDns53Handler()
 	if *dns532ndECSIPsFlag != "" {
 		dns53Handler.AppendDefaultECSIPStr(*dns532ndECSIPsFlag)
+	}
+	// Use doh relay service to add high priority exit ip.
+	if !*dns53UpstreamDns53Flag {
+		upstreamURL_, err := url.Parse(*dns53UpstreamFlag)
+		if err != nil {
+			c <- err
+		}
+		exitIP_, err := HTTPGetString(fmt.Sprintf("%s://%s/checkip", upstreamURL_.Scheme, upstreamURL_.Host))
+		if err == nil {
+			dns53Handler.InsertDefaultECSIPStr(exitIP_)
+		}
 	}
 	dns.HandleFunc(".", dns53Handler.ServeDNS)
 	dns53ListenAddrs_ := strings.Split(*dns53ListenFlag, ",")
