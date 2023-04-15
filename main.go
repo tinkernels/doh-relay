@@ -16,7 +16,7 @@ import (
 	"syscall"
 )
 
-const CurrentVersion = "v1.0.0-beta.8"
+const CurrentVersion = "v1.0.0-beta.8.1"
 const DefaultDohListen = "127.0.0.1:15353"
 
 var (
