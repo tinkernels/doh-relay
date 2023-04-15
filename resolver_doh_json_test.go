@@ -10,7 +10,7 @@ func TestDohJsonResolver_Resolve(t *testing.T) {
 		qName string
 		qType uint16
 	}
-	resolver_ := NewDohJsonResolver(Quad9JsonEndpoints, true, &CacheOptions{cacheType: InternalCacheType})
+	resolver_ := NewDohJsonResolver(Quad9JsonEndpoints, true, &CacheOptions{cacheType: CacheTypeInternal})
 	tests := []struct {
 		name     string
 		resolver *DohJsonResolver

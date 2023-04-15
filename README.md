@@ -27,6 +27,8 @@ Options:
         Enable cache for DNS answers. (default true)
   -cache-backend string
         Specify cache backend (default "internal")
+  -config string
+        use config file (yaml format)
   -dns53
         Enable dns53 relay service.
   -dns53-2nd-ecs-ip string
@@ -64,12 +66,14 @@ Options:
   -maxmind-citydb-file string
         Specify maxmind city db file path.
   -redis-uri string
-        Specify redis uri for caching (default "redis://localhost:6379/0")
+        Specify redis uri for caching
   -version
         Print version info.
 ```
+### Config file
+  There's a example config file with comments [here](config-example.yml).
 
-### Example
+### Usage example
 
 - Set up a `DNS53` (listening on `tcp://0.0.0.0:53` and `udp://0.0.0.0:53`) service relaying DNS queries to `DNS-over-HTTPS` service (`https://9.9.9.11/dns-query`): 
 
@@ -88,6 +92,10 @@ Options:
   ```
   doh-relay -doh -doh-listen :15353 -doh-upstream tcp://9.9.9.11:53 -doh-upstream-dns53 -maxmind-citydb-file /var/lib/GeoIP/GeoLite2-City.mmdb
   ```
+
+## TODOs
+
+  - [ ] Implement redis cache backend.
 
 ## Thanks
 

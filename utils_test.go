@@ -13,13 +13,13 @@ func TestGetExIPByResolver(t *testing.T) {
 		{
 			"DNS53Resolver",
 			args{
-				rsv: NewDns53DnsMsgResolver([]string{"tcp://223.5.5.5:53"}, false, &CacheOptions{cacheType: InternalCacheType}),
+				rsv: NewDns53DnsMsgResolver([]string{"tcp://223.5.5.5:53"}, false, &CacheOptions{cacheType: CacheTypeInternal}),
 			},
 		},
 		{
 			"DohResolver",
 			args{
-				rsv: NewDohDnsMsgResolver([]string{"https://1.1.1.1/dns-query"}, false, &CacheOptions{cacheType: InternalCacheType}),
+				rsv: NewDohDnsMsgResolver([]string{"https://1.1.1.1/dns-query"}, false, &CacheOptions{cacheType: CacheTypeInternal}),
 			},
 		},
 	}

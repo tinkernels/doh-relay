@@ -1,8 +1,9 @@
-**
+/**
 
-!**/*.go
-!**/go.mod
-!**/go.sum
-!**/Makefile
-!**/*.md
-!**/LICENSE
+!/**/*.go
+!/**/go.mod
+!/**/go.sum
+!/**/Makefile
+!/**/*.md
+!/**/LICENSE
+!/config-example.yml

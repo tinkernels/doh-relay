@@ -70,7 +70,7 @@ func Test_DnsMsgBase64(t *testing.T) {
 }
 
 func TestDnsMsgResolver_Resolve(t *testing.T) {
-	resolver_ := NewDohDnsMsgResolver(Quad9DnsMsgEndpoints, true, &CacheOptions{cacheType: InternalCacheType})
+	resolver_ := NewDohDnsMsgResolver(Quad9DnsMsgEndpoints, true, &CacheOptions{cacheType: CacheTypeInternal})
 	type args struct {
 		qName            string
 		qType            uint16

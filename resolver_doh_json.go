@@ -50,9 +50,9 @@ func NewDohJsonResolver(endpoints []string, useCache bool, cacheOptions *CacheOp
 	}()
 	// If using cache
 	if rsv.useCache {
-		if cacheOptions.cacheType == InternalCacheType {
+		if cacheOptions.cacheType == CacheTypeInternal {
 			rsv.cache = NewCacheInternal()
-			rsv.cacheType = InternalCacheType
+			rsv.cacheType = CacheTypeInternal
 		}
 		// TODO: redis cache type
 	}
@@ -68,7 +68,7 @@ func (rsv *DohJsonResolver) GetCache(key string) (rsp ResolverRsp, ok bool) {
 	if !ok {
 		return nil, false
 	}
-	if rsv.cacheType == InternalCacheType {
+	if rsv.cacheType == CacheTypeInternal {
 		return cacheItem_.(*RspCacheItem).ResolverResponse, true
 	} else {
 		// TODO: redis cache type

@@ -17,9 +17,14 @@ import (
 )
 
 const CurrentVersion = "v1.0.0-beta.8"
-const DefaultRelayListenAddr = "127.0.0.1:15353"
+const DefaultDohListen = "127.0.0.1:15353"
 
 var (
+	configFileFlag = flag.String(
+		"config",
+		"",
+		"use config file (yaml format)",
+	)
 	dns53Flag = flag.Bool(
 		"dns53", false, "Enable dns53 relay service.",
 	)
@@ -55,7 +60,7 @@ var (
 	)
 	dohListenFlag = flag.String(
 		"doh-listen",
-		DefaultRelayListenAddr, "Set doh relay service listen port.",
+		DefaultDohListen, "Set doh relay service listen port.",
 	)
 	dohPathFlag = flag.String(
 		"doh-path",
@@ -110,12 +115,12 @@ var (
 	)
 	cacheBackendFLag = flag.String(
 		"cache-backend",
-		InternalCacheType,
+		CacheTypeInternal,
 		"Specify cache backend",
 	)
 	redisURIFLag = flag.String(
 		"redis-uri",
-		"redis://localhost:6379/0",
+		"",
 		"Specify redis uri for caching",
 	)
 	logLevelFlag = flag.String(
@@ -154,6 +159,43 @@ func printVersion() {
 	fmt.Println(CurrentVersion)
 }
 
+func fillExecConfigFromFlags() {
+
+	ExecConfig.Dns53Config.Enabled = *dns53Flag
+	ExecConfig.Dns53Config.Listen = *dns53ListenFlag
+	ExecConfig.Dns53Config.Upstream = *dns53UpstreamFlag
+	if *dns53UpstreamJsonFlag {
+		ExecConfig.Dns53Config.UpstreamProto = RelayUpstreamProtoJson
+	} else if *dns53UpstreamDns53Flag {
+		ExecConfig.Dns53Config.UpstreamProto = RelayUpstreamProtoDns53
+	} else {
+		ExecConfig.Dns53Config.UpstreamProto = RelayUpstreamProtoDoh
+	}
+	ExecConfig.Dns53Config.EcsIP2nd = *dns532ndECSIPsFlag
+
+	ExecConfig.DohConfig.Enabled = *dohFlag
+	ExecConfig.DohConfig.Listen = *dohListenFlag
+	ExecConfig.DohConfig.Upstream = *dohUpstreamFlag
+	if *dohUpstreamJsonFlag {
+		ExecConfig.DohConfig.UpstreamProto = RelayUpstreamProtoJson
+	} else if *dohUpstreamDns53Flag {
+		ExecConfig.DohConfig.UpstreamProto = RelayUpstreamProtoDns53
+	} else {
+		ExecConfig.DohConfig.UpstreamProto = RelayUpstreamProtoDoh
+	}
+	ExecConfig.DohConfig.Path = *dohPathFlag
+	ExecConfig.DohConfig.EcsIP2nd = *doh2ndECSIPFlag
+	ExecConfig.DohConfig.UseTls = *dohTlsFlag
+	ExecConfig.DohConfig.TLSCertFile = *dohTlsCertFlag
+	ExecConfig.DohConfig.TLSKeyFile = *dohTlsKeyFlag
+
+	ExecConfig.CacheEnabled = *cacheFlag
+	ExecConfig.CacheBackend = *cacheBackendFLag
+	ExecConfig.RedisURI = *redisURIFLag
+	ExecConfig.GeoIPCityDBPath = *maxmindCityDBFileFlag
+	ExecConfig.LogLevel = *logLevelFlag
+}
+
 func main() {
 
 	// Exit on some signals.
@@ -173,6 +215,11 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if *configFileFlag != "" && PathExists(*configFileFlag) {
+		ReadConfigFromFile(*configFileFlag)
+	} else {
+		fillExecConfigFromFlags()
+	}
 
 	if *versionFlag {
 		printVersion()
@@ -182,32 +229,32 @@ func main() {
 	fmt.Println("*** Starting ***")
 
 	// Set the loglevel
-	logLevel_, err := logger.ParseLevel(*logLevelFlag)
+	logLevel_, err := logger.ParseLevel(ExecConfig.LogLevel)
 	if err != nil {
 		log.Warnf("invalid log level: %v", err)
 	}
 	log.SetLevel(logLevel_)
 
-	InitGeoipReader(*maxmindCityDBFileFlag)
+	InitGeoipReader(ExecConfig.GeoIPCityDBPath)
 
 	chRelaySvc_, chDns53Svc_ := make(chan error), make(chan error)
 
-	if *dohFlag {
+	if ExecConfig.DohConfig.Enabled {
 		initDohRsvAnswerer()
 		go serveDohSvc(chRelaySvc_)
 	}
 
-	if *dns53Flag {
+	if ExecConfig.Dns53Config.Enabled {
 		initDns53RsvAnswerer()
 		go serveDns53Svc(chDns53Svc_)
 	}
 
 	// Log services exit errors.
-	if *dohFlag {
+	if ExecConfig.DohConfig.Enabled {
 		serveRelayErr_ := <-chRelaySvc_
 		log.Infof("relay service exit: %+v", serveRelayErr_)
 	}
-	if *dns53Flag {
+	if ExecConfig.Dns53Config.Enabled {
 		serveDns53Err_ := <-chDns53Svc_
 		log.Infof("dns53 service exit: %+v", serveDns53Err_)
 	}
@@ -217,7 +264,7 @@ func main() {
 // initDohRsvAnswerer initializes the DNS-over-HTTPS upstream query service.
 func initDohRsvAnswerer() {
 	var upstreamEndpoints_ []string
-	if tmpEndpoints_ := strings.Split(*dohUpstreamFlag, ","); *dohUpstreamFlag != "" &&
+	if tmpEndpoints_ := strings.Split(ExecConfig.DohConfig.Upstream, ","); ExecConfig.DohConfig.Upstream != "" &&
 		len(tmpEndpoints_) > 0 {
 		upstreamEndpoints_ = make([]string, len(tmpEndpoints_))
 		for i_ := range tmpEndpoints_ {
@@ -225,22 +272,22 @@ func initDohRsvAnswerer() {
 		}
 	}
 	var resolver Resolver
-	cacheOptions_ := &CacheOptions{cacheType: *cacheBackendFLag, redisURI: *redisURIFLag}
-	if *dohUpstreamJsonFlag {
+	cacheOptions_ := &CacheOptions{cacheType: ExecConfig.CacheBackend, redisURI: ExecConfig.RedisURI}
+	if ExecConfig.DohConfig.UpstreamProto == RelayUpstreamProtoJson {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9JsonEndpoints
 		}
-		resolver = NewDohJsonResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
-	} else if *dohUpstreamDns53Flag {
+		resolver = NewDohJsonResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+	} else if ExecConfig.DohConfig.UpstreamProto == RelayUpstreamProtoDns53 {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9Dns53Endpoints
 		}
-		resolver = NewDns53DnsMsgResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
+		resolver = NewDns53DnsMsgResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
 	} else {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9DnsMsgEndpoints
 		}
-		resolver = NewDohDnsMsgResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
+		resolver = NewDohDnsMsgResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
 	}
 	RelayAnswerer = NewDnsMsgAnswerer(resolver)
 }
@@ -248,30 +295,30 @@ func initDohRsvAnswerer() {
 // initDns53RsvAnswerer initializes the DNS-over-HTTPS upstream query service.
 func initDns53RsvAnswerer() {
 	var upstreamEndpoints_ []string
-	if tmpEndpoints_ := strings.Split(*dns53UpstreamFlag, ","); *dns53UpstreamFlag != "" &&
-		len(tmpEndpoints_) > 0 {
+	if tmpEndpoints_ := strings.Split(ExecConfig.Dns53Config.Upstream, ","); ExecConfig.Dns53Config.Upstream != "" && len(tmpEndpoints_) > 0 {
+
 		upstreamEndpoints_ = make([]string, len(tmpEndpoints_))
 		for i_ := range tmpEndpoints_ {
 			upstreamEndpoints_[i_] = strings.TrimSpace(tmpEndpoints_[i_])
 		}
 	}
 	var resolver Resolver
-	cacheOptions_ := &CacheOptions{cacheType: *cacheBackendFLag, redisURI: *redisURIFLag}
-	if *dns53UpstreamJsonFlag {
+	cacheOptions_ := &CacheOptions{cacheType: ExecConfig.CacheBackend, redisURI: ExecConfig.RedisURI}
+	if ExecConfig.Dns53Config.UpstreamProto == RelayUpstreamProtoJson {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9JsonEndpoints
 		}
-		resolver = NewDohJsonResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
-	} else if *dns53UpstreamDns53Flag {
+		resolver = NewDohJsonResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+	} else if ExecConfig.Dns53Config.UpstreamProto == RelayUpstreamProtoDns53 {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9Dns53Endpoints
 		}
-		resolver = NewDns53DnsMsgResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
+		resolver = NewDns53DnsMsgResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
 	} else {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9DnsMsgEndpoints
 		}
-		resolver = NewDohDnsMsgResolver(upstreamEndpoints_, *cacheFlag, cacheOptions_)
+		resolver = NewDohDnsMsgResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
 	}
 	Dns53Answerer = NewDnsMsgAnswerer(resolver)
 }
@@ -279,7 +326,7 @@ func initDns53RsvAnswerer() {
 func serveDohSvc(c chan error) {
 	// Set Gin mode referred to loglevel.
 	var err error
-	if logLevel_, err := logger.ParseLevel(*logLevelFlag); err == nil && logLevel_ >= logger.DebugLevel {
+	if logLevel_, err := logger.ParseLevel(ExecConfig.LogLevel); err == nil && logLevel_ >= logger.DebugLevel {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)
@@ -294,31 +341,34 @@ func serveDohSvc(c chan error) {
 	router_.RemoteIPHeaders = []string{"X-Real-IP"}
 
 	dohHandler := NewDohHandler()
-	if *doh2ndECSIPFlag != "" {
-		for _, ip_ := range strings.Split(*doh2ndECSIPFlag, ",") {
+	if ExecConfig.DohConfig.EcsIP2nd != "" {
+		for _, ip_ := range strings.Split(ExecConfig.DohConfig.EcsIP2nd, ",") {
 			dohHandler.AppendDefaultECSIPStr(ip_)
 		}
 	}
 
 	// Routes.
-	router_.GET(*dohPathFlag, dohHandler.DohGetHandler)
+	router_.GET(ExecConfig.DohConfig.Path, dohHandler.DohGetHandler)
 	router_.GET("/checkip", func(context *gin.Context) {
 		_, err = context.Writer.WriteString(context.ClientIP())
 	})
-	router_.POST(*dohPathFlag, dohHandler.DohPostHandler)
+	router_.POST(ExecConfig.DohConfig.Path, dohHandler.DohPostHandler)
 
-	listenAddr_ := DefaultRelayListenAddr
-	if ListenAddrPortAvailable(*dohListenFlag) {
-		listenAddr_ = *dohListenFlag
+	listenAddr_ := DefaultDohListen
+	if ExecConfig.DohConfig.Listen != "" && !ListenAddrPortAvailable(ExecConfig.DohConfig.Listen) {
+		c <- fmt.Errorf("doh listen config invalid: %s", ExecConfig.DohConfig.Listen)
+		return
+	} else {
+		listenAddr_ = ExecConfig.DohConfig.Listen
 	}
-	if *dohTlsFlag {
-		if !PathExists(*dohTlsCertFlag) || !PathExists(*dohTlsKeyFlag) {
+	if ExecConfig.DohConfig.UseTls {
+		if !PathExists(ExecConfig.DohConfig.TLSCertFile) || !PathExists(ExecConfig.DohConfig.TLSKeyFile) {
 			c <- fmt.Errorf("missing tls cert or key")
 			return
 		}
 		err = router_.RunTLS(listenAddr_,
-			*dohTlsCertFlag,
-			*dohTlsKeyFlag,
+			ExecConfig.DohConfig.TLSCertFile,
+			ExecConfig.DohConfig.TLSKeyFile,
 		)
 		c <- err
 		return
@@ -329,12 +379,12 @@ func serveDohSvc(c chan error) {
 
 func serveDns53Svc(c chan error) {
 	dns53Handler := NewDns53Handler()
-	if *dns532ndECSIPsFlag != "" {
-		dns53Handler.AppendDefaultECSIPStr(*dns532ndECSIPsFlag)
+	if ExecConfig.Dns53Config.EcsIP2nd != "" {
+		dns53Handler.AppendDefaultECSIPStr(ExecConfig.Dns53Config.EcsIP2nd)
 	}
 	// Use doh relay service to add high priority exit ip.
-	if !*dns53UpstreamDns53Flag {
-		upstreamURL_, err := url.Parse(*dns53UpstreamFlag)
+	if ExecConfig.Dns53Config.UpstreamProto != RelayUpstreamProtoDns53 {
+		upstreamURL_, err := url.Parse(ExecConfig.Dns53Config.Upstream)
 		if err != nil {
 			c <- err
 		}
@@ -344,7 +394,7 @@ func serveDns53Svc(c chan error) {
 		}
 	}
 	dns.HandleFunc(".", dns53Handler.ServeDNS)
-	dns53ListenAddrs_ := strings.Split(*dns53ListenFlag, ",")
+	dns53ListenAddrs_ := strings.Split(ExecConfig.Dns53Config.Listen, ",")
 	var dns53CHs_ []chan error
 	for i := range dns53ListenAddrs_ {
 		url_, err := url.Parse(strings.TrimSpace(dns53ListenAddrs_[i]))

@@ -1,8 +1,8 @@
 package main
 
-var (
-	InternalCacheType = "internal"
-	RedisCacheType    = "redis"
+const (
+	CacheTypeInternal = "internal"
+	CacheTypeRedis    = "redis"
 )
 
 type CacheOptions struct {

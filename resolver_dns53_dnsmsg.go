@@ -31,9 +31,9 @@ func NewDns53DnsMsgResolver(endpoints []string, useCache bool, cacheOptions *Cac
 	rsv.netConnPool = newConnPool4Resolver(endpoints)
 	// If using cache
 	if rsv.useCache {
-		if cacheOptions.cacheType == InternalCacheType {
+		if cacheOptions.cacheType == CacheTypeInternal {
 			rsv.cache = NewCacheInternal()
-			rsv.cacheType = InternalCacheType
+			rsv.cacheType = CacheTypeInternal
 		}
 		// TODO: redis cache type
 	}
@@ -91,7 +91,7 @@ func (rsv *Dns53DnsMsgResolver) GetCache(key string) (rsp ResolverRsp, ok bool) 
 	if !ok {
 		return nil, false
 	}
-	if rsv.cacheType == InternalCacheType {
+	if rsv.cacheType == CacheTypeInternal {
 		return cacheItem_.(*RspCacheItem).ResolverResponse, true
 	} else {
 		// TODO: redis cache type

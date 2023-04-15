@@ -128,7 +128,7 @@ func CommonResolverQuery(rsv Resolver, qName string, qType uint16, ecsIPsStr str
 	for _, s := range ecsIPStrArr_ {
 		if ip_ := ObtainIPFromString(s); ip_ != nil {
 			country_, state_, _ := GeoIPCountryStateCity(ip_)
-			if SliceContains(countryCodes_, country_) {
+			if SliceContains(countryCodes_, country_) || IsNameInJailOfCountry(qName, country_) {
 				continue
 			}
 			ips_ = append(ips_, ip_)
