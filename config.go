@@ -94,13 +94,13 @@ func ReadConfigFromFile(path string) (config ConfigModel) {
 	}
 	ExecConfig = config
 	for _, nameInJail := range ExecConfig.NamesInJail {
+		regexp_, err := regexp.Compile(nameInJail.NameRegex)
+		if err != nil {
+			fmt.Println("Compile regex error:", err)
+			continue
+		}
 		countryCodes_ := strings.Split(nameInJail.CountryCodes, ",")
 		for _, countryCode := range countryCodes_ {
-			regexp_, err := regexp.Compile(nameInJail.NameRegex)
-			if err != nil {
-				fmt.Println("Compile regex error:", err)
-				continue
-			}
 			countryCode = strings.TrimSpace(countryCode)
 			if countryCode == "" {
 				continue
