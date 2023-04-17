@@ -16,7 +16,7 @@ import (
 	"syscall"
 )
 
-const CurrentVersion = "v1.0.0-beta.8.1"
+const CurrentVersion = "v1.0.0-beta.8.2"
 const DefaultDohListen = "127.0.0.1:15353"
 
 var (
@@ -266,6 +266,7 @@ func initDohRsvAnswerer() {
 	var upstreamEndpoints_ []string
 	if tmpEndpoints_ := strings.Split(ExecConfig.DohConfig.Upstream, ","); ExecConfig.DohConfig.Upstream != "" &&
 		len(tmpEndpoints_) > 0 {
+
 		upstreamEndpoints_ = make([]string, len(tmpEndpoints_))
 		for i_ := range tmpEndpoints_ {
 			upstreamEndpoints_[i_] = strings.TrimSpace(tmpEndpoints_[i_])
@@ -295,7 +296,8 @@ func initDohRsvAnswerer() {
 // initDns53RsvAnswerer initializes the DNS-over-HTTPS upstream query service.
 func initDns53RsvAnswerer() {
 	var upstreamEndpoints_ []string
-	if tmpEndpoints_ := strings.Split(ExecConfig.Dns53Config.Upstream, ","); ExecConfig.Dns53Config.Upstream != "" && len(tmpEndpoints_) > 0 {
+	if tmpEndpoints_ := strings.Split(ExecConfig.Dns53Config.Upstream, ","); ExecConfig.Dns53Config.Upstream != "" &&
+		len(tmpEndpoints_) > 0 {
 
 		upstreamEndpoints_ = make([]string, len(tmpEndpoints_))
 		for i_ := range tmpEndpoints_ {

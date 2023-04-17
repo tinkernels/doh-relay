@@ -14,8 +14,10 @@ func NewDns53Handler() (h *Dns53Handler) {
 		DefaultECSIPs: make([]string, 0),
 	}
 	exitIP_ := GetExitIPByResolver(Dns53Answerer.Resolver)
-	if ObtainIPFromString(exitIP_) == nil || SliceContains(h.DefaultECSIPs, exitIP_) {
-		log.Errorf("Failed to get exit IP address")
+	if ObtainIPFromString(exitIP_) == nil ||
+		SliceContains(h.DefaultECSIPs, exitIP_) {
+
+		log.Warnf("will not use exit IP address: %s", exitIP_)
 		return
 	}
 	log.Infof("Exit IP: %s", exitIP_)
@@ -24,13 +26,19 @@ func NewDns53Handler() (h *Dns53Handler) {
 }
 
 func (h *Dns53Handler) AppendDefaultECSIPStr(ipStr string) {
-	if ip := ObtainIPFromString(ipStr); ip != nil && !SliceContains(h.DefaultECSIPs, ip.String()) {
+	if ip := ObtainIPFromString(ipStr); ip != nil &&
+		!SliceContains(h.DefaultECSIPs, ip.String()) &&
+		!IsPrivateIP(ip) {
+
 		h.DefaultECSIPs = append(h.DefaultECSIPs, ip.String())
 	}
 }
 
 func (h *Dns53Handler) InsertDefaultECSIPStr(ipStr string) {
-	if ip := ObtainIPFromString(ipStr); ip != nil && !SliceContains(h.DefaultECSIPs, ip.String()) {
+	if ip := ObtainIPFromString(ipStr); ip != nil &&
+		!SliceContains(h.DefaultECSIPs, ip.String()) &&
+		!IsPrivateIP(ip) {
+
 		h.DefaultECSIPs = append([]string{ip.String()}, h.DefaultECSIPs...)
 	}
 }
@@ -41,7 +49,7 @@ func (h *Dns53Handler) ServeDNS(w dns.ResponseWriter, msgReq *dns.Msg) {
 
 	// ECS in request dns message.
 	ecs_ := ObtainECS(msgReq)
-	if ecs_ != nil && ecs_.Address != nil {
+	if ecs_ != nil && ecs_.Address != nil && !IsPrivateIP(ecs_.Address) {
 		tryEcsIPs_ = append(tryEcsIPs_, ecs_.Address.String())
 	}
 	tryEcsIPs_ = append(tryEcsIPs_, h.DefaultECSIPs...)

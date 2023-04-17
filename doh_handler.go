@@ -20,13 +20,19 @@ func NewDohHandler() (h *DohHandler) {
 }
 
 func (h *DohHandler) AppendDefaultECSIPStr(ipStr string) {
-	if ip := ObtainIPFromString(ipStr); ip != nil && !SliceContains(h.DefaultECSIPs, ip.String()) {
+	if ip := ObtainIPFromString(ipStr); ip != nil &&
+		!SliceContains(h.DefaultECSIPs, ip.String()) &&
+		!IsPrivateIP(ip) {
+
 		h.DefaultECSIPs = append(h.DefaultECSIPs, ip.String())
 	}
 }
 
 func (h *DohHandler) InsertDefaultECSIPStr(ipStr string) {
-	if ip := ObtainIPFromString(ipStr); ip != nil && !SliceContains(h.DefaultECSIPs, ip.String()) {
+	if ip := ObtainIPFromString(ipStr); ip != nil &&
+		!SliceContains(h.DefaultECSIPs, ip.String()) &&
+		!IsPrivateIP(ip) {
+
 		h.DefaultECSIPs = append([]string{ip.String()}, h.DefaultECSIPs...)
 	}
 }
@@ -76,20 +82,25 @@ func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
 
 	// ECS in request dns message.
 	ecs_ := ObtainECS(msgReq)
-	if ecs_ != nil && ecs_.Address != nil {
+	if ecs_ != nil && ecs_.Address != nil && !IsPrivateIP(ecs_.Address) {
 		tryEcsIPs_ = append(tryEcsIPs_, ecs_.Address.String())
 	}
 
 	// Custom Header for specifying EDNS-Client-Subnet.
 	if s_ := strings.TrimSpace(c.GetHeader("X-EDNS-Client-Subnet")); s_ != "" {
 		for _, s := range strings.Split(s_, ",") {
-			if ip := ObtainIPFromString(s); ip != nil && !SliceContains(tryEcsIPs_, ip.String()) {
+			if ip := ObtainIPFromString(s); ip != nil &&
+				!SliceContains(tryEcsIPs_, ip.String()) &&
+				!IsPrivateIP(ip) {
+
 				tryEcsIPs_ = append(tryEcsIPs_, ip.String())
 			}
 		}
 	}
 	// Client IP
-	if !SliceContains(tryEcsIPs_, c.ClientIP()) {
+	if ip := ObtainIPFromString(c.ClientIP()); !SliceContains(tryEcsIPs_, c.ClientIP()) &&
+		!IsPrivateIP(ip) {
+		
 		tryEcsIPs_ = append(tryEcsIPs_, c.ClientIP())
 	}
 	tryEcsIPs_ = append(tryEcsIPs_, h.DefaultECSIPs...)
