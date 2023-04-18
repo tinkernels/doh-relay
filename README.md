@@ -41,6 +41,8 @@ Options:
         If dns53 service relays DNS queries to upstream endpoints using dns53 protocol.
   -dns53-upstream-json
         If dns53 service relays DNS queries to upstream endpoints transfer with json format.
+  -dns53-use-client-ip
+        If dns53 service use client ip as ECS.
   -doh
         Enable DoH relay service.
   -doh-2nd-ecs-ip string
@@ -61,6 +63,8 @@ Options:
         If DoH service relays queries to upstream endpoints using dns53 protocol.
   -doh-upstream-json
         If DoH service relays queries to upstream DoH endpoints transfer with json format.
+  -doh-use-client-ip
+        If doh service use client ip as ECS.
   -loglevel string
         Set log level. (default "info")
   -maxmind-citydb-file string

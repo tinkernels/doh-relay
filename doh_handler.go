@@ -98,9 +98,10 @@ func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
 		}
 	}
 	// Client IP
-	if ip := ObtainIPFromString(c.ClientIP()); !SliceContains(tryEcsIPs_, c.ClientIP()) &&
+	if ip := ObtainIPFromString(c.ClientIP()); ExecConfig.DohConfig.UseClientIP &&
+		!SliceContains(tryEcsIPs_, c.ClientIP()) &&
 		!IsPrivateIP(ip) {
-		
+
 		tryEcsIPs_ = append(tryEcsIPs_, c.ClientIP())
 	}
 	tryEcsIPs_ = append(tryEcsIPs_, h.DefaultECSIPs...)

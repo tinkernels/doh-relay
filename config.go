@@ -56,6 +56,7 @@ type Dns53ConfigModel struct {
 	Upstream      string `yaml:"upstream"`
 	UpstreamProto string `yaml:"upstream_proto"`
 	EcsIP2nd      string `yaml:"2nd_ecs_ip"`
+	UseClientIP   bool   `yaml:"use_client_ip"`
 }
 
 type DohConfigModel struct {
@@ -68,6 +69,7 @@ type DohConfigModel struct {
 	UseTls        bool   `yaml:"use_tls"`
 	TLSCertFile   string `yaml:"tls_cert_file"`
 	TLSKeyFile    string `yaml:"tls_key_file"`
+	UseClientIP   bool   `yaml:"use_client_ip"`
 }
 
 type ConfigModel struct {

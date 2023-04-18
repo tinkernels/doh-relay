@@ -32,6 +32,11 @@ var (
 		"dns53-listen",
 		"udp://:53,tcp://:53", "Set dns53 service listen port.",
 	)
+	dns53UseClientIPFlag = flag.Bool(
+		"dns53-use-client-ip",
+		false,
+		"If dns53 service use client ip as ECS.",
+	)
 	dns532ndECSIPsFlag = flag.String(
 		"dns53-2nd-ecs-ip",
 		"",
@@ -57,6 +62,11 @@ var (
 		"doh",
 		false,
 		"Enable DoH relay service.",
+	)
+	dohUseClientIPFlag = flag.Bool(
+		"doh-use-client-ip",
+		false,
+		"If doh service use client ip as ECS.",
 	)
 	dohListenFlag = flag.String(
 		"doh-listen",
@@ -172,6 +182,7 @@ func fillExecConfigFromFlags() {
 		ExecConfig.Dns53Config.UpstreamProto = RelayUpstreamProtoDoh
 	}
 	ExecConfig.Dns53Config.EcsIP2nd = *dns532ndECSIPsFlag
+	ExecConfig.Dns53Config.UseClientIP = *dns53UseClientIPFlag
 
 	ExecConfig.DohConfig.Enabled = *dohFlag
 	ExecConfig.DohConfig.Listen = *dohListenFlag
@@ -188,6 +199,7 @@ func fillExecConfigFromFlags() {
 	ExecConfig.DohConfig.UseTls = *dohTlsFlag
 	ExecConfig.DohConfig.TLSCertFile = *dohTlsCertFlag
 	ExecConfig.DohConfig.TLSKeyFile = *dohTlsKeyFlag
+	ExecConfig.DohConfig.UseClientIP = *dohUseClientIPFlag
 
 	ExecConfig.CacheEnabled = *cacheFlag
 	ExecConfig.CacheBackend = *cacheBackendFLag
@@ -386,17 +398,24 @@ func serveDns53Svc(c chan error) {
 			dns53Handler.AppendDefaultECSIPStr(ip_)
 		}
 	}
-	// Use doh relay service to add high priority exit ip.
-	if ExecConfig.Dns53Config.UpstreamProto != RelayUpstreamProtoDns53 {
-		upstreamURL_, err := url.Parse(ExecConfig.Dns53Config.Upstream)
-		if err != nil {
-			c <- err
-		}
-		exitIP_, err := HTTPGetString(fmt.Sprintf("%s://%s/checkip", upstreamURL_.Scheme, upstreamURL_.Host))
-		if err == nil {
+	if ExecConfig.Dns53Config.UseClientIP {
+		if exitIP_ := GetExitIPByResolver(Dns53Answerer.Resolver); ObtainIPFromString(exitIP_) != nil {
+			log.Infof("Exit IP: %s", exitIP_)
 			dns53Handler.InsertDefaultECSIPStr(exitIP_)
 		}
+		// Use doh relay service to add high priority exit ip.
+		if ExecConfig.Dns53Config.UpstreamProto != RelayUpstreamProtoDns53 {
+			upstreamURL_, err := url.Parse(ExecConfig.Dns53Config.Upstream)
+			if err != nil {
+				c <- err
+			}
+			exitIP_, err := HTTPGetString(fmt.Sprintf("%s://%s/checkip", upstreamURL_.Scheme, upstreamURL_.Host))
+			if err == nil {
+				dns53Handler.InsertDefaultECSIPStr(exitIP_)
+			}
+		}
 	}
+
 	dns.HandleFunc(".", dns53Handler.ServeDNS)
 	dns53ListenAddrs_ := strings.Split(ExecConfig.Dns53Config.Listen, ",")
 	var dns53CHs_ []chan error

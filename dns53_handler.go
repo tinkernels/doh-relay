@@ -13,15 +13,6 @@ func NewDns53Handler() (h *Dns53Handler) {
 	h = &Dns53Handler{
 		DefaultECSIPs: make([]string, 0),
 	}
-	exitIP_ := GetExitIPByResolver(Dns53Answerer.Resolver)
-	if ObtainIPFromString(exitIP_) == nil ||
-		SliceContains(h.DefaultECSIPs, exitIP_) {
-
-		log.Warnf("will not use exit IP address: %s", exitIP_)
-		return
-	}
-	log.Infof("Exit IP: %s", exitIP_)
-	h.AppendDefaultECSIPStr(exitIP_)
 	return
 }
 

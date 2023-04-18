@@ -9,6 +9,8 @@ log_level: info
 dns53:
   enabled: true
   listen: tcp://:53,udp://53
+  # use client ip as ecs
+  use_client_ip: true
   # only tcp dns53 upstream is supported
   upstream: tcp://8.8.8.8:53,tcp://8.8.8.8:53
   # Possible value: doh, dns53, doh_json
@@ -17,6 +19,8 @@ dns53:
 doh:
   enabled: true
   listen: 127.0.0.1:443
+  # use client ip as ecs
+  use_client_ip: true
   upstream: https://dns.google/dns-query
   # Possible value: doh, dns53, doh_json
   upstream_proto: doh
