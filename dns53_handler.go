@@ -36,7 +36,7 @@ func (h *Dns53Handler) InsertDefaultECSIPStr(ipStr string) {
 
 func (h *Dns53Handler) responseEmpty(w dns.ResponseWriter, msgReq *dns.Msg) {
 	msgReq.Response = false
-	msgReq.Rcode = dns.RcodeRefused
+	msgReq.Rcode = dns.RcodeSuccess
 	err := w.WriteMsg(msgReq)
 	if err != nil {
 		return
