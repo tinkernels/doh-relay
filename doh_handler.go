@@ -76,9 +76,28 @@ func (h *DohHandler) DohPostHandler(c *gin.Context) {
 	h.doDohResponse(c, msgReq_)
 }
 
+func (h *DohHandler) responseEmpty(c *gin.Context, msgReq *dns.Msg) {
+	msgReq.Response = false
+	msgReq.Rcode = dns.RcodeRefused
+	msgRspBytes_, err := msgReq.Pack()
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	c.Status(http.StatusOK)
+	c.Header("Content-Type", "application/dns-message")
+	_, err = c.Writer.Write(msgRspBytes_)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	return
+}
+
 func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
 	// Ignore AAAA Question when configured to not answer
 	if len(msgReq.Question) > 0 && msgReq.Question[0].Qtype == dns.TypeAAAA && !ExecConfig.IPv6Answer {
+		h.responseEmpty(c, msgReq)
 		return
 	}
 
@@ -118,6 +137,7 @@ func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
 	defer func() { msgRsp_ = nil }()
 	if err != nil || msgRsp_ == nil {
 		log.Error(err)
+		h.responseEmpty(c, msgReq)
 		return
 	}
 	// Restore request ECS.
@@ -129,6 +149,7 @@ func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
 	msgRspBytes_, err := msgRsp_.Pack()
 	if err != nil {
 		log.Error(err)
+		h.responseEmpty(c, msgReq)
 		return
 	}
 	c.Status(http.StatusOK)
