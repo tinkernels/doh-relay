@@ -77,6 +77,11 @@ func (h *DohHandler) DohPostHandler(c *gin.Context) {
 }
 
 func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
+	// Ignore AAAA Question when configured to not answer
+	if len(msgReq.Question) > 0 && msgReq.Question[0].Qtype == dns.TypeAAAA && !ExecConfig.IPv6Answer {
+		return
+	}
+
 	var tryEcsIPs_ []string
 	defer func() { tryEcsIPs_ = nil }()
 

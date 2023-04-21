@@ -113,6 +113,11 @@ var (
 		"",
 		"Specify secondary EDNS-Client-Subnet ip, eg: 12.34.56.78",
 	)
+	ipv6AnswerFlag = flag.Bool(
+		"ipv6-answer",
+		false,
+		"Enable ipv6 answer.",
+	)
 	maxmindCityDBFileFlag = flag.String(
 		"maxmind-citydb-file",
 		"",
@@ -205,6 +210,7 @@ func fillExecConfigFromFlags() {
 	ExecConfig.CacheBackend = *cacheBackendFLag
 	ExecConfig.RedisURI = *redisURIFLag
 	ExecConfig.GeoIPCityDBPath = *maxmindCityDBFileFlag
+	ExecConfig.IPv6Answer = *ipv6AnswerFlag
 	ExecConfig.LogLevel = *logLevelFlag
 }
 

@@ -35,6 +35,11 @@ func (h *Dns53Handler) InsertDefaultECSIPStr(ipStr string) {
 }
 
 func (h *Dns53Handler) ServeDNS(w dns.ResponseWriter, msgReq *dns.Msg) {
+	// Ignore AAAA Question when configured to not answer
+	if len(msgReq.Question) > 0 && msgReq.Question[0].Qtype == dns.TypeAAAA && !ExecConfig.IPv6Answer {
+		return
+	}
+
 	var tryEcsIPs_ []string
 	defer func() { tryEcsIPs_ = nil }()
 

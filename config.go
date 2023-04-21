@@ -33,6 +33,7 @@ var (
 		RedisURI:        "",
 		GeoIPCityDBPath: "",
 		LogLevel:        "info",
+		IPv6Answer:      false,
 		NamesInJail:     []NameInJailConfigModel{},
 	}
 
@@ -80,6 +81,7 @@ type ConfigModel struct {
 	RedisURI        string                  `yaml:"redis_uri"`
 	GeoIPCityDBPath string                  `yaml:"geoip_city_db_path"`
 	LogLevel        string                  `yaml:"log_level"`
+	IPv6Answer      bool                    `yaml:"ipv6_answer"`
 	NamesInJail     []NameInJailConfigModel `yaml:"names_in_jail"`
 }
 
