@@ -77,7 +77,7 @@ func (h *DohHandler) DohPostHandler(c *gin.Context) {
 }
 
 func (h *DohHandler) responseEmpty(c *gin.Context, msgReq *dns.Msg) {
-	msgReq.Response = false
+	msgReq.Response = true
 	msgReq.Rcode = dns.RcodeSuccess
 	msgRspBytes_, err := msgReq.Pack()
 	if err != nil {
