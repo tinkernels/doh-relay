@@ -359,6 +359,9 @@ var (
 )
 
 func GetIPAnswerFromResolverRsp(rsvRsp ResolverRsp) (ipStr string) {
+	if rsvRsp == nil {
+		return
+	}
 	for _, r := range rsvRsp.AnswerV() {
 		switch r.(type) {
 		case *dns.A:
@@ -383,11 +386,21 @@ func GetExitIPByResolver(rsv Resolver) (ipStr string) {
 		url_, _ := url.Parse(edp)
 		hostname_ := url_.Hostname()
 		rsvRspA_, errA_ := rsv.Resolve(hostname_, dns.TypeA, nil)
-		rsvRspAAAA_, errAAAA_ := rsv.Resolve(hostname_, dns.TypeAAAA, nil)
-		if errA_ != nil || errAAAA_ != nil {
+		if errA_ != nil {
 			continue
 		}
-		ips_ := []string{GetIPAnswerFromResolverRsp(rsvRspA_), GetIPAnswerFromResolverRsp(rsvRspAAAA_)}
+		ips_ := []string{GetIPAnswerFromResolverRsp(rsvRspA_)}
+		var (
+			rsvRspAAAA_ ResolverRsp
+			errAAAA_    error
+		)
+		if ExecConfig.IPv6Answer {
+			rsvRspAAAA_, errAAAA_ = rsv.Resolve(hostname_, dns.TypeAAAA, nil)
+			if errAAAA_ != nil {
+				continue
+			}
+			ips_ = append(ips_, GetIPAnswerFromResolverRsp(rsvRspAAAA_))
+		}
 	getIPApiLoop:
 		for _, ip := range ips_ {
 			if ip == "" {
