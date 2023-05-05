@@ -52,25 +52,27 @@ type NameInJailConfigModel struct {
 }
 
 type Dns53ConfigModel struct {
-	Enabled       bool   `yaml:"enabled"`
-	Listen        string `yaml:"listen"`
-	Upstream      string `yaml:"upstream"`
-	UpstreamProto string `yaml:"upstream_proto"`
-	EcsIP2nd      string `yaml:"2nd_ecs_ip"`
-	UseClientIP   bool   `yaml:"use_client_ip"`
+	Enabled          bool   `yaml:"enabled"`
+	Listen           string `yaml:"listen"`
+	Upstream         string `yaml:"upstream"`
+	UpstreamFallback string `yaml:"upstream_fallback"`
+	UpstreamProto    string `yaml:"upstream_proto"`
+	EcsIP2nd         string `yaml:"2nd_ecs_ip"`
+	UseClientIP      bool   `yaml:"use_client_ip"`
 }
 
 type DohConfigModel struct {
-	Enabled       bool   `yaml:"enabled"`
-	Listen        string `yaml:"listen"`
-	Upstream      string `yaml:"upstream"`
-	UpstreamProto string `yaml:"upstream_proto"`
-	Path          string `yaml:"path"`
-	EcsIP2nd      string `yaml:"2nd_ecs_ip"`
-	UseTls        bool   `yaml:"use_tls"`
-	TLSCertFile   string `yaml:"tls_cert_file"`
-	TLSKeyFile    string `yaml:"tls_key_file"`
-	UseClientIP   bool   `yaml:"use_client_ip"`
+	Enabled          bool   `yaml:"enabled"`
+	Listen           string `yaml:"listen"`
+	Upstream         string `yaml:"upstream"`
+	UpstreamFallback string `yaml:"upstream_fallback"`
+	UpstreamProto    string `yaml:"upstream_proto"`
+	Path             string `yaml:"path"`
+	EcsIP2nd         string `yaml:"2nd_ecs_ip"`
+	UseTls           bool   `yaml:"use_tls"`
+	TLSCertFile      string `yaml:"tls_cert_file"`
+	TLSKeyFile       string `yaml:"tls_key_file"`
+	UseClientIP      bool   `yaml:"use_client_ip"`
 }
 
 type ConfigModel struct {

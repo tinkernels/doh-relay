@@ -281,66 +281,98 @@ func main() {
 
 // initDohRsvAnswerer initializes the DNS-over-HTTPS upstream query service.
 func initDohRsvAnswerer() {
-	var upstreamEndpoints_ []string
-	if tmpEndpoints_ := strings.Split(ExecConfig.DohConfig.Upstream, ","); ExecConfig.DohConfig.Upstream != "" &&
-		len(tmpEndpoints_) > 0 {
+	var upstreamEndpoints_, fallbackUpstreamEndpoints_, tmpEndpoints_ []string
 
-		upstreamEndpoints_ = make([]string, len(tmpEndpoints_))
-		for i_ := range tmpEndpoints_ {
-			upstreamEndpoints_[i_] = strings.TrimSpace(tmpEndpoints_[i_])
+	tmpEndpoints_ = strings.Split(ExecConfig.DohConfig.Upstream, ",")
+	for _, edp := range tmpEndpoints_ {
+		if trimmedEdp_ := strings.TrimSpace(edp); trimmedEdp_ != "" {
+			upstreamEndpoints_ = append(upstreamEndpoints_, trimmedEdp_)
 		}
 	}
-	var resolver Resolver
+
+	tmpEndpoints_ = strings.Split(ExecConfig.DohConfig.UpstreamFallback, ",")
+	for _, edp := range tmpEndpoints_ {
+		if trimmedEdp_ := strings.TrimSpace(edp); trimmedEdp_ != "" {
+			fallbackUpstreamEndpoints_ = append(fallbackUpstreamEndpoints_, trimmedEdp_)
+		}
+	}
+
+	var resolver, fallbackResolver Resolver
 	cacheOptions_ := &CacheOptions{cacheType: ExecConfig.CacheBackend, redisURI: ExecConfig.RedisURI}
 	if ExecConfig.DohConfig.UpstreamProto == RelayUpstreamProtoJson {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9JsonEndpoints
 		}
 		resolver = NewDohJsonResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		if len(fallbackUpstreamEndpoints_) != 0 {
+			fallbackResolver = NewDohJsonResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		}
 	} else if ExecConfig.DohConfig.UpstreamProto == RelayUpstreamProtoDns53 {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9Dns53Endpoints
 		}
 		resolver = NewDns53DnsMsgResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		if len(fallbackUpstreamEndpoints_) != 0 {
+			fallbackResolver = NewDns53DnsMsgResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		}
 	} else {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9DnsMsgEndpoints
 		}
 		resolver = NewDohDnsMsgResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		if len(fallbackUpstreamEndpoints_) != 0 {
+			fallbackResolver = NewDohDnsMsgResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		}
 	}
-	RelayAnswerer = NewDnsMsgAnswerer(resolver)
+	RelayAnswerer = NewDnsMsgAnswerer(resolver, fallbackResolver)
 }
 
 // initDns53RsvAnswerer initializes the DNS-over-HTTPS upstream query service.
 func initDns53RsvAnswerer() {
-	var upstreamEndpoints_ []string
-	if tmpEndpoints_ := strings.Split(ExecConfig.Dns53Config.Upstream, ","); ExecConfig.Dns53Config.Upstream != "" &&
-		len(tmpEndpoints_) > 0 {
+	var upstreamEndpoints_, fallbackUpstreamEndpoints_, tmpEndpoints_ []string
 
-		upstreamEndpoints_ = make([]string, len(tmpEndpoints_))
-		for i_ := range tmpEndpoints_ {
-			upstreamEndpoints_[i_] = strings.TrimSpace(tmpEndpoints_[i_])
+	tmpEndpoints_ = strings.Split(ExecConfig.DohConfig.Upstream, ",")
+	for _, edp := range tmpEndpoints_ {
+		if trimmedEdp_ := strings.TrimSpace(edp); trimmedEdp_ != "" {
+			upstreamEndpoints_ = append(upstreamEndpoints_, trimmedEdp_)
 		}
 	}
-	var resolver Resolver
+
+	tmpEndpoints_ = strings.Split(ExecConfig.DohConfig.UpstreamFallback, ",")
+	for _, edp := range tmpEndpoints_ {
+		if trimmedEdp_ := strings.TrimSpace(edp); trimmedEdp_ != "" {
+			fallbackUpstreamEndpoints_ = append(fallbackUpstreamEndpoints_, trimmedEdp_)
+		}
+	}
+
+	var resolver, fallbackResolver Resolver
 	cacheOptions_ := &CacheOptions{cacheType: ExecConfig.CacheBackend, redisURI: ExecConfig.RedisURI}
 	if ExecConfig.Dns53Config.UpstreamProto == RelayUpstreamProtoJson {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9JsonEndpoints
 		}
 		resolver = NewDohJsonResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		if len(fallbackUpstreamEndpoints_) != 0 {
+			fallbackResolver = NewDohJsonResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		}
 	} else if ExecConfig.Dns53Config.UpstreamProto == RelayUpstreamProtoDns53 {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9Dns53Endpoints
 		}
 		resolver = NewDns53DnsMsgResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		if len(fallbackUpstreamEndpoints_) != 0 {
+			fallbackResolver = NewDns53DnsMsgResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		}
 	} else {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9DnsMsgEndpoints
 		}
 		resolver = NewDohDnsMsgResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		if len(fallbackUpstreamEndpoints_) != 0 {
+			fallbackResolver = NewDohDnsMsgResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		}
 	}
-	Dns53Answerer = NewDnsMsgAnswerer(resolver)
+	Dns53Answerer = NewDnsMsgAnswerer(resolver, fallbackResolver)
 }
 
 func serveDohSvc(c chan error) {
