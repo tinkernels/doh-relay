@@ -331,14 +331,14 @@ func initDohRsvAnswerer() {
 func initDns53RsvAnswerer() {
 	var upstreamEndpoints_, fallbackUpstreamEndpoints_, tmpEndpoints_ []string
 
-	tmpEndpoints_ = strings.Split(ExecConfig.DohConfig.Upstream, ",")
+	tmpEndpoints_ = strings.Split(ExecConfig.Dns53Config.Upstream, ",")
 	for _, edp := range tmpEndpoints_ {
 		if trimmedEdp_ := strings.TrimSpace(edp); trimmedEdp_ != "" {
 			upstreamEndpoints_ = append(upstreamEndpoints_, trimmedEdp_)
 		}
 	}
 
-	tmpEndpoints_ = strings.Split(ExecConfig.DohConfig.UpstreamFallback, ",")
+	tmpEndpoints_ = strings.Split(ExecConfig.Dns53Config.UpstreamFallback, ",")
 	for _, edp := range tmpEndpoints_ {
 		if trimmedEdp_ := strings.TrimSpace(edp); trimmedEdp_ != "" {
 			fallbackUpstreamEndpoints_ = append(fallbackUpstreamEndpoints_, trimmedEdp_)
