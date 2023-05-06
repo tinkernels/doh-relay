@@ -30,6 +30,7 @@ func (dma *DnsMsgAnswerer) Answer(dnsReq *dns.Msg, ecsIPs string) (dnsRsp *dns.M
 	}
 
 	if len(rsvRsp_.AnswerV()) == 0 && dma.FallbackResolver != nil {
+		log.Infof("using fallback resolver for %+v", question_)
 		rsvRspFb_, errFb_ := dma.FallbackResolver.Query(question_.Name, question_.Qtype, ecsIPs)
 		if errFb_ == nil && rsvRspFb_ != nil && len(rsvRspFb_.AnswerV()) != 0 {
 			rsvRsp_, err = rsvRspFb_, errFb_

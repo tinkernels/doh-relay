@@ -324,6 +324,7 @@ func initDohRsvAnswerer() {
 			fallbackResolver = NewDohDnsMsgResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
 		}
 	}
+	log.Infof("resolver: %+v, fallback: %+v", upstreamEndpoints_, fallbackUpstreamEndpoints_)
 	RelayAnswerer = NewDnsMsgAnswerer(resolver, fallbackResolver)
 }
 
@@ -372,6 +373,7 @@ func initDns53RsvAnswerer() {
 			fallbackResolver = NewDohDnsMsgResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
 		}
 	}
+	log.Infof("dns53 upstream resolver: %+v, fallback: %+v", upstreamEndpoints_, fallbackUpstreamEndpoints_)
 	Dns53Answerer = NewDnsMsgAnswerer(resolver, fallbackResolver)
 }
 
