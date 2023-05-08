@@ -34,9 +34,9 @@ func (h *Dns53Handler) InsertDefaultECSIPStr(ipStr string) {
 	}
 }
 
-func (h *Dns53Handler) responseEmpty(w dns.ResponseWriter, msgReq *dns.Msg) {
+func (h *Dns53Handler) responseEmpty(w dns.ResponseWriter, msgReq *dns.Msg, rCode int) {
 	msgReq.Response = true
-	msgReq.Rcode = dns.RcodeSuccess
+	msgReq.Rcode = rCode
 	err := w.WriteMsg(msgReq)
 	if err != nil {
 		return
@@ -47,7 +47,7 @@ func (h *Dns53Handler) responseEmpty(w dns.ResponseWriter, msgReq *dns.Msg) {
 func (h *Dns53Handler) ServeDNS(w dns.ResponseWriter, msgReq *dns.Msg) {
 	// Ignore AAAA Question when configured to not answer
 	if len(msgReq.Question) > 0 && msgReq.Question[0].Qtype == dns.TypeAAAA && !ExecConfig.IPv6Answer {
-		h.responseEmpty(w, msgReq)
+		h.responseEmpty(w, msgReq, dns.RcodeSuccess)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *Dns53Handler) ServeDNS(w dns.ResponseWriter, msgReq *dns.Msg) {
 	defer func() { msgRsp_ = nil }()
 	if err != nil {
 		log.Error(err)
-		h.responseEmpty(w, msgReq)
+		h.responseEmpty(w, msgReq, dns.RcodeRefused)
 		return
 	}
 	// Restore request ECS.
