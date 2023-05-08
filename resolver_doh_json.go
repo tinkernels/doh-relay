@@ -120,6 +120,11 @@ func (rsv *DohJsonResolver) Resolve(qName string, qType uint16, ecsIP *net.IP) (
 		log.Error(err)
 		return
 	}
+	if httpRsp_.StatusCode >= 400 {
+		err = fmt.Errorf("got status code: %d", httpRsp_.StatusCode)
+		log.Error(err)
+		return nil, err
+	}
 	jsonRsp_ := new(DohJsonResolverRsp)
 	decoder_ := json.NewDecoder(httpRsp_.Body)
 	err = decoder_.Decode(&jsonRsp_)

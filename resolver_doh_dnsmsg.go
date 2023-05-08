@@ -129,6 +129,11 @@ func (rsv *DohDnsMsgResolver) Resolve(qName string, qType uint16, ecsIP *net.IP)
 		log.Error(err)
 		return
 	}
+	if httpRsp_.StatusCode >= 400 {
+		err = fmt.Errorf("got status code: %d", httpRsp_.StatusCode)
+		log.Error(err)
+		return nil, err
+	}
 	buf_, err := io.ReadAll(httpRsp_.Body)
 	if err != nil {
 		log.Error(err)
