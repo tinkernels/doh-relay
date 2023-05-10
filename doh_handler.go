@@ -136,7 +136,7 @@ func (h *DohHandler) doDohResponse(c *gin.Context, msgReq *dns.Msg) {
 	msgRsp_, err := RelayAnswerer.Answer(msgReq, strings.Join(tryEcsIPs_, ","))
 	defer func() { msgRsp_ = nil }()
 	if err != nil || msgRsp_ == nil {
-		log.Error(err)
+		log.Errorf("error when resolving %+v: %+v", msgReq.Question, err)
 		c.Status(http.StatusInternalServerError)
 		h.responseEmpty(c, msgReq)
 		return
