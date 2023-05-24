@@ -25,11 +25,17 @@ type DohJsonResolver struct {
 }
 
 func NewDohJsonResolver(endpoints []string, useCache bool, cacheOptions *CacheOptions) (rsv *DohJsonResolver) {
+	httpTransport_ := &http.Transport{
+		Proxy:                 nil,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   3 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 	rsv = &DohJsonResolver{
 		httpClient: &http.Client{
-			Transport: &http.Transport{
-				Proxy: nil,
-			},
+			Transport: httpTransport_,
 		},
 		useCache:  useCache,
 		endpoints: endpoints,
