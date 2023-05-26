@@ -482,7 +482,7 @@ func HTTPGetString(urlStr string) (string, error) {
 	return string(bodyBytes_[:]), nil
 }
 
-var privateIPBlocks []*net.IPNet = func() []*net.IPNet {
+var privateIPBlocks = func() []*net.IPNet {
 	var privateIPBlocks_ []*net.IPNet
 	for _, cidr := range []string{
 		"127.0.0.0/8",    // IPv4 loopback
