@@ -439,18 +439,23 @@ func serveDns53Svc(c chan error) {
 		}
 	}
 	if ExecConfig.Dns53Config.UseClientIP {
-		if exitIP_ := GetExitIPByResolver(Dns53Answerer.Resolver); ObtainIPFromString(exitIP_) != nil {
-			log.Infof("Exit IP: %s", exitIP_)
-			dns53Handler.InsertDefaultECSIPStr(exitIP_)
-		}
+		var exitIP_ string
 		// Use doh relay service to add high priority exit ip.
 		if ExecConfig.Dns53Config.UpstreamProto != RelayUpstreamProtoDns53 {
 			upstreamURL_, err := url.Parse(ExecConfig.Dns53Config.Upstream)
 			if err != nil {
 				c <- err
 			}
-			exitIP_, err := HTTPGetString(fmt.Sprintf("%s://%s/checkip", upstreamURL_.Scheme, upstreamURL_.Host))
+			exitIP_, err = HTTPGetString(fmt.Sprintf("%s://%s/checkip", upstreamURL_.Scheme, upstreamURL_.Host))
 			if err == nil {
+				log.Infof("Exit IP from checkip service of upstream doh: %s", exitIP_)
+				dns53Handler.InsertDefaultECSIPStr(exitIP_)
+			}
+		}
+		if exitIP_ == "" {
+			exitIP_ = GetExitIPByResolver(Dns53Answerer.Resolver)
+			if ObtainIPFromString(exitIP_) != nil {
+				log.Infof("Exit IP from checkip service of thrid parties: %s", exitIP_)
 				dns53Handler.InsertDefaultECSIPStr(exitIP_)
 			}
 		}
