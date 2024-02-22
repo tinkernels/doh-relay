@@ -6,11 +6,14 @@ redis_uri: redis://127.0.0.1:6379
 # Maxmind GeoIP database path
 geoip_city_db_path: /path/to/GeoIPCity.dat
 log_level: info
+# upstream host resolver
+upstream_host_resolver: tcp://127.0.0.1:1253
 dns53:
   enabled: true
   listen: tcp://:53,udp://53
   # only tcp dns53 upstream is supported
   upstream: tcp://8.8.8.8:53,tcp://8.8.8.8:53
+  upstream_fallback: tcp://8.8.8.8:53,tcp://8.8.8.8:53
   # Possible value: doh, dns53, doh_json
   upstream_proto: dns53
   # use client ip as ecs
@@ -21,6 +24,7 @@ doh:
   enabled: true
   listen: 127.0.0.1:443
   upstream: https://dns.google/dns-query
+  upstream_fallback: https://dns.google/dns-query
   # Possible value: doh, dns53, doh_json
   upstream_proto: doh
   path: /dns-query

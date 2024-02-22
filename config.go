@@ -78,15 +78,16 @@ type DohConfigModel struct {
 }
 
 type ConfigModel struct {
-	Dns53Config     Dns53ConfigModel        `yaml:"dns53"`
-	DohConfig       DohConfigModel          `yaml:"doh"`
-	CacheEnabled    bool                    `yaml:"cache_enabled"`
-	CacheBackend    string                  `yaml:"cache_backend"`
-	RedisURI        string                  `yaml:"redis_uri"`
-	GeoIPCityDBPath string                  `yaml:"geoip_city_db_path"`
-	LogLevel        string                  `yaml:"log_level"`
-	IPv6Answer      bool                    `yaml:"ipv6_answer"`
-	NamesInJail     []NameInJailConfigModel `yaml:"names_in_jail"`
+	Dns53Config          Dns53ConfigModel        `yaml:"dns53"`
+	DohConfig            DohConfigModel          `yaml:"doh"`
+	CacheEnabled         bool                    `yaml:"cache_enabled"`
+	CacheBackend         string                  `yaml:"cache_backend"`
+	RedisURI             string                  `yaml:"redis_uri"`
+	GeoIPCityDBPath      string                  `yaml:"geoip_city_db_path"`
+	LogLevel             string                  `yaml:"log_level"`
+	IPv6Answer           bool                    `yaml:"ipv6_answer"`
+	NamesInJail          []NameInJailConfigModel `yaml:"names_in_jail"`
+	UpstreamHostResolver string                  `yaml:"upstream_host_resolver"`
 }
 
 func ReadConfigFromFile(path string) (config ConfigModel) {

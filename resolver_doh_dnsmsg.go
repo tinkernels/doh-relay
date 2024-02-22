@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"github.com/miekg/dns"
@@ -8,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -33,6 +35,28 @@ func NewDohDnsMsgResolver(endpoints []string, useCache bool, cacheOptions *Cache
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   3 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+	}
+	if ExecConfig.UpstreamHostResolver != "" {
+		url_, err := url.Parse(strings.TrimSpace(ExecConfig.UpstreamHostResolver))
+		if err == nil {
+			if ListenAddrPortAvailable(url_.Host) {
+				dialContext := func(ctx context.Context, network, addr string) (net.Conn, error) {
+					dialer := &net.Dialer{
+						Resolver: &net.Resolver{
+							PreferGo: true,
+							Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+								d := net.Dialer{
+									Timeout: time.Duration(5000) * time.Millisecond,
+								}
+								return d.DialContext(ctx, url_.Scheme, url_.Host)
+							},
+						},
+					}
+					return dialer.DialContext(ctx, network, addr)
+				}
+				httpTransport_.DialContext = dialContext
+			}
+		}
 	}
 	rsv = &DohDnsMsgResolver{
 		httpClient: &http.Client{

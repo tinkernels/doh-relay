@@ -1,10 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
+	"fmt"
 	"github.com/miekg/dns"
+	"io"
 	"net"
+	"net/http"
+	"net/url"
 	"testing"
+	"time"
 )
 
 func Test_DnsMsgBase64(t *testing.T) {
@@ -137,5 +143,62 @@ func TestDnsMsgResolver_Resolve(t *testing.T) {
 				return
 			}
 		})
+	}
+}
+
+func TestCustomResolver4HttpClient(t *testing.T) {
+	resolver := "tcp://223.5.5.5:53"
+	url_, err := url.Parse(resolver)
+	if err != nil {
+		return
+	}
+	if !ListenAddrPortAvailable(url_.Host) {
+		return
+	}
+	var (
+		dnsResolverIP    = url_.Host   // Google DNS resolver.
+		dnsResolverProto = url_.Scheme // Protocol to use for the DNS resolver
+	)
+
+	dialContext := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		dialer := &net.Dialer{
+			Resolver: &net.Resolver{
+				PreferGo: true,
+				Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+					d := net.Dialer{
+						Timeout: time.Duration(5000) * time.Millisecond,
+					}
+					return d.DialContext(ctx, dnsResolverProto, dnsResolverIP)
+				},
+			},
+		}
+		return dialer.DialContext(ctx, network, addr)
+	}
+
+	httpTransport_ := &http.Transport{
+		Proxy:                 nil,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   3 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		DialContext:           dialContext, // Use the custom resolver
+	}
+
+	httpClient := &http.Client{
+		Transport: httpTransport_,
+	}
+	for {
+		resp, err := httpClient.Get("https://www.baidu.com")
+		if err != nil {
+			return
+		}
+		body, _ := io.ReadAll(resp.Body)
+		bodyStr := string(body)
+		fmt.Println(bodyStr)
+		err = resp.Body.Close()
+		if err != nil {
+			return
+		}
 	}
 }
