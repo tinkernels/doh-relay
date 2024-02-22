@@ -37,6 +37,11 @@ var (
 		false,
 		"If dns53 service use client ip as ECS.",
 	)
+	dns531stECSIPsFlag = flag.String(
+		"dns53-1st-ecs-ip",
+		"",
+		"Set dns53 primary EDNS-Client-Subnet ip, eg: 12.34.56.78.",
+	)
 	dns532ndECSIPsFlag = flag.String(
 		"dns53-2nd-ecs-ip",
 		"",
@@ -107,6 +112,11 @@ var (
 		"doh-tls-key",
 		"",
 		"Specify tls key path.",
+	)
+	doh1stECSIPFlag = flag.String(
+		"doh-1st-ecs-ip",
+		"",
+		"Specify primary EDNS-Client-Subnet ip, eg: 12.34.56.78",
 	)
 	doh2ndECSIPFlag = flag.String(
 		"doh-2nd-ecs-ip",
@@ -187,6 +197,7 @@ func fillExecConfigFromFlags() {
 		ExecConfig.Dns53Config.UpstreamProto = RelayUpstreamProtoDoh
 	}
 	ExecConfig.Dns53Config.EcsIP2nd = *dns532ndECSIPsFlag
+	ExecConfig.Dns53Config.EcsIP1st = *dns531stECSIPsFlag
 	ExecConfig.Dns53Config.UseClientIP = *dns53UseClientIPFlag
 
 	ExecConfig.DohConfig.Enabled = *dohFlag
@@ -205,6 +216,7 @@ func fillExecConfigFromFlags() {
 	ExecConfig.DohConfig.TLSCertFile = *dohTlsCertFlag
 	ExecConfig.DohConfig.TLSKeyFile = *dohTlsKeyFlag
 	ExecConfig.DohConfig.UseClientIP = *dohUseClientIPFlag
+	ExecConfig.DohConfig.EcsIP1st = *doh1stECSIPFlag
 
 	ExecConfig.CacheEnabled = *cacheFlag
 	ExecConfig.CacheBackend = *cacheBackendFLag
@@ -401,6 +413,12 @@ func serveDohSvc(c chan error) {
 		}
 	}
 
+	if ExecConfig.Dns53Config.EcsIP1st != "" {
+		for _, ip_ := range strings.Split(ExecConfig.DohConfig.EcsIP1st, ",") {
+			dohHandler.InsertDefaultECSIPStr(ip_)
+		}
+	}
+
 	// Routes.
 	router_.GET(ExecConfig.DohConfig.Path, dohHandler.DohGetHandler)
 	router_.GET("/checkip", func(context *gin.Context) {
@@ -458,6 +476,10 @@ func serveDns53Svc(c chan error) {
 				log.Infof("Exit IP from checkip service of thrid parties: %s", exitIP_)
 				dns53Handler.InsertDefaultECSIPStr(exitIP_)
 			}
+		}
+	} else if ExecConfig.Dns53Config.EcsIP1st != "" {
+		for _, ip_ := range strings.Split(ExecConfig.Dns53Config.EcsIP1st, ",") {
+			dns53Handler.InsertDefaultECSIPStr(ip_)
 		}
 	}
 

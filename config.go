@@ -57,6 +57,7 @@ type Dns53ConfigModel struct {
 	Upstream         string `yaml:"upstream"`
 	UpstreamFallback string `yaml:"upstream_fallback"`
 	UpstreamProto    string `yaml:"upstream_proto"`
+	EcsIP1st         string `yaml:"1st_ecs_ip"`
 	EcsIP2nd         string `yaml:"2nd_ecs_ip"`
 	UseClientIP      bool   `yaml:"use_client_ip"`
 }
@@ -68,6 +69,7 @@ type DohConfigModel struct {
 	UpstreamFallback string `yaml:"upstream_fallback"`
 	UpstreamProto    string `yaml:"upstream_proto"`
 	Path             string `yaml:"path"`
+	EcsIP1st         string `yaml:"1st_ecs_ip"`
 	EcsIP2nd         string `yaml:"2nd_ecs_ip"`
 	UseTls           bool   `yaml:"use_tls"`
 	TLSCertFile      string `yaml:"tls_cert_file"`

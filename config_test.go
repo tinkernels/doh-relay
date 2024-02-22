@@ -75,7 +75,8 @@ dns53:
 doh:
   enabled: true
   listen: "127.0.0.1:443"
-  upstream: "https://dns.google/dns-query"
+  upstream: "https://dns.google/dns-query,\
+             https://dns.quad9.net/dns-query"
   upstream_proto: "doh"
   path: "/dns-query"
   ecs_ip_2nd: "192.168.1.1"

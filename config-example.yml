@@ -9,22 +9,24 @@ log_level: info
 dns53:
   enabled: true
   listen: tcp://:53,udp://53
-  # use client ip as ecs
-  use_client_ip: true
   # only tcp dns53 upstream is supported
   upstream: tcp://8.8.8.8:53,tcp://8.8.8.8:53
   # Possible value: doh, dns53, doh_json
   upstream_proto: dns53
+  # use client ip as ecs
+  use_client_ip: true
+  1st_ecs_ip: 192.0.2.1
   2nd_ecs_ip: 192.0.2.1
 doh:
   enabled: true
   listen: 127.0.0.1:443
-  # use client ip as ecs
-  use_client_ip: true
   upstream: https://dns.google/dns-query
   # Possible value: doh, dns53, doh_json
   upstream_proto: doh
   path: /dns-query
+  # use client ip as ecs
+  use_client_ip: true
+  1st_ecs_ip: 192.0.2.1
   2nd_ecs_ip: 192.0.2.1
   use_tls: true
   tls_cert_file: /path/to/cert.pem
