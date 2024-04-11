@@ -20,6 +20,11 @@ dns53:
   use_client_ip: true
   1st_ecs_ip: 192.0.2.1
   2nd_ecs_ip: 192.0.2.1
+  fixed_resolving:
+    - name_regex: ^([^\.\s]+\.)*google\.com\.$
+      server: tcp://8.8.8.8
+    - name_regex: ^([^\.\s]+\.)*gmail\.com\.$
+      server: tcp://8.8.8.8
 doh:
   enabled: true
   listen: 127.0.0.1:443
@@ -35,6 +40,11 @@ doh:
   use_tls: true
   tls_cert_file: /path/to/cert.pem
   tls_key_file: /path/to/key.pem
+  fixed_resolving:
+    - name_regex: ^([^\.\s]+\.)*google\.com\.$
+      server: https://dns.google/dns-query
+    - name_regex: ^([^\.\s]+\.)*gmail\.com\.$
+      server: https://dns.google/dns-query
 # when query name matched name_regex, will skip the query with ecs ips that have specified geo country codes
 names_in_jail:
   # apple
@@ -72,4 +82,3 @@ names_in_jail:
     country_codes: CN
   - name_regex: ^([^\.\s]+\.)*googlemail\.com\.$
     country_codes: CN
-

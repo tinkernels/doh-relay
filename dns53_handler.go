@@ -63,7 +63,7 @@ func (h *Dns53Handler) ServeDNS(w dns.ResponseWriter, msgReq *dns.Msg) {
 
 	msgRsp_, err := Dns53Answerer.Answer(msgReq, strings.Join(tryEcsIPs_, ","))
 	defer func() { msgRsp_ = nil }()
-	if err != nil {
+	if err != nil || msgRsp_ == nil {
 		log.Errorf("error when resolving %+v: %+v", msgReq.Question, err)
 		h.responseEmpty(w, msgReq, dns.RcodeRefused)
 		return

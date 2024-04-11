@@ -11,12 +11,13 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"syscall"
 )
 
-const CurrentVersion = "v1.0.0-beta.8.2"
+const CurrentVersion = "v1.0.0"
 const DefaultDohListen = "127.0.0.1:15353"
 
 var (
@@ -291,6 +292,28 @@ func main() {
 	os.Exit(0)
 }
 
+func initFixedResolvers(t UpstreamType, conf []FixedResolvingConfigModel) (resolvers map[*regexp.Regexp]Resolver) {
+	cacheOptions_ := &CacheOptions{cacheType: ExecConfig.CacheBackend, redisURI: ExecConfig.RedisURI}
+	resolvers = make(map[*regexp.Regexp]Resolver)
+	for _, f := range conf {
+		c_ := cacheOptions_
+		pattern_, err := regexp.Compile(f.NameRegex)
+		if err != nil {
+			log.Warnf("domain name regex invalid: %+v", f.NameRegex)
+		}
+		if t == RelayUpstreamProtoDoh {
+			resolvers[pattern_] = NewDohDnsMsgResolver([]string{f.Server}, true, c_)
+		} else if t == RelayUpstreamProtoJson {
+			resolvers[pattern_] = NewDohJsonResolver([]string{f.Server}, true, c_)
+		} else if t == RelayUpstreamProtoDns53 {
+			resolvers[pattern_] = NewDns53DnsMsgResolver([]string{f.Server}, true, c_)
+		} else {
+			continue
+		}
+	}
+	return
+}
+
 // initDohRsvAnswerer initializes the DNS-over-HTTPS upstream query service.
 func initDohRsvAnswerer() {
 	var upstreamEndpoints_, fallbackUpstreamEndpoints_, tmpEndpoints_ []string
@@ -310,6 +333,7 @@ func initDohRsvAnswerer() {
 	}
 
 	var resolver, fallbackResolver Resolver
+	fixedResolvers := make(map[*regexp.Regexp]Resolver)
 	cacheOptions_ := &CacheOptions{cacheType: ExecConfig.CacheBackend, redisURI: ExecConfig.RedisURI}
 	if ExecConfig.DohConfig.UpstreamProto == RelayUpstreamProtoJson {
 		if len(upstreamEndpoints_) == 0 {
@@ -319,6 +343,9 @@ func initDohRsvAnswerer() {
 		if len(fallbackUpstreamEndpoints_) != 0 {
 			fallbackResolver = NewDohJsonResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
 		}
+		if len(ExecConfig.DohConfig.FixedResolving) != 0 {
+			fixedResolvers = initFixedResolvers(RelayUpstreamProtoJson, ExecConfig.DohConfig.FixedResolving)
+		}
 	} else if ExecConfig.DohConfig.UpstreamProto == RelayUpstreamProtoDns53 {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9Dns53Endpoints
@@ -326,6 +353,9 @@ func initDohRsvAnswerer() {
 		resolver = NewDns53DnsMsgResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
 		if len(fallbackUpstreamEndpoints_) != 0 {
 			fallbackResolver = NewDns53DnsMsgResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		}
+		if len(ExecConfig.DohConfig.FixedResolving) != 0 {
+			fixedResolvers = initFixedResolvers(RelayUpstreamProtoDns53, ExecConfig.DohConfig.FixedResolving)
 		}
 	} else {
 		if len(upstreamEndpoints_) == 0 {
@@ -335,9 +365,12 @@ func initDohRsvAnswerer() {
 		if len(fallbackUpstreamEndpoints_) != 0 {
 			fallbackResolver = NewDohDnsMsgResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
 		}
+		if len(ExecConfig.DohConfig.FixedResolving) != 0 {
+			fixedResolvers = initFixedResolvers(RelayUpstreamProtoDoh, ExecConfig.DohConfig.FixedResolving)
+		}
 	}
 	log.Infof("resolver: %+v, fallback: %+v", upstreamEndpoints_, fallbackUpstreamEndpoints_)
-	RelayAnswerer = NewDnsMsgAnswerer(resolver, fallbackResolver)
+	RelayAnswerer = NewDnsMsgAnswerer(resolver, fallbackResolver, fixedResolvers)
 }
 
 // initDns53RsvAnswerer initializes the DNS-over-HTTPS upstream query service.
@@ -359,6 +392,7 @@ func initDns53RsvAnswerer() {
 	}
 
 	var resolver, fallbackResolver Resolver
+	fixedResolvers := make(map[*regexp.Regexp]Resolver)
 	cacheOptions_ := &CacheOptions{cacheType: ExecConfig.CacheBackend, redisURI: ExecConfig.RedisURI}
 	if ExecConfig.Dns53Config.UpstreamProto == RelayUpstreamProtoJson {
 		if len(upstreamEndpoints_) == 0 {
@@ -368,6 +402,9 @@ func initDns53RsvAnswerer() {
 		if len(fallbackUpstreamEndpoints_) != 0 {
 			fallbackResolver = NewDohJsonResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
 		}
+		if len(ExecConfig.Dns53Config.FixedResolving) != 0 {
+			fixedResolvers = initFixedResolvers(RelayUpstreamProtoJson, ExecConfig.Dns53Config.FixedResolving)
+		}
 	} else if ExecConfig.Dns53Config.UpstreamProto == RelayUpstreamProtoDns53 {
 		if len(upstreamEndpoints_) == 0 {
 			upstreamEndpoints_ = Quad9Dns53Endpoints
@@ -375,6 +412,9 @@ func initDns53RsvAnswerer() {
 		resolver = NewDns53DnsMsgResolver(upstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
 		if len(fallbackUpstreamEndpoints_) != 0 {
 			fallbackResolver = NewDns53DnsMsgResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
+		}
+		if len(ExecConfig.Dns53Config.FixedResolving) != 0 {
+			fixedResolvers = initFixedResolvers(RelayUpstreamProtoDns53, ExecConfig.Dns53Config.FixedResolving)
 		}
 	} else {
 		if len(upstreamEndpoints_) == 0 {
@@ -384,9 +424,12 @@ func initDns53RsvAnswerer() {
 		if len(fallbackUpstreamEndpoints_) != 0 {
 			fallbackResolver = NewDohDnsMsgResolver(fallbackUpstreamEndpoints_, ExecConfig.CacheEnabled, cacheOptions_)
 		}
+		if len(ExecConfig.Dns53Config.FixedResolving) != 0 {
+			fixedResolvers = initFixedResolvers(RelayUpstreamProtoDoh, ExecConfig.Dns53Config.FixedResolving)
+		}
 	}
 	log.Infof("dns53 upstream resolver: %+v, fallback: %+v", upstreamEndpoints_, fallbackUpstreamEndpoints_)
-	Dns53Answerer = NewDnsMsgAnswerer(resolver, fallbackResolver)
+	Dns53Answerer = NewDnsMsgAnswerer(resolver, fallbackResolver, fixedResolvers)
 }
 
 func serveDohSvc(c chan error) {

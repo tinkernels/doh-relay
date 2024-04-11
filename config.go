@@ -46,35 +46,44 @@ const (
 	RelayUpstreamProtoDns53 = "dns53"
 )
 
+type UpstreamType string
+
 type NameInJailConfigModel struct {
 	NameRegex    string `yaml:"name_regex"`
 	CountryCodes string `yaml:"country_codes"`
 }
 
+type FixedResolvingConfigModel struct {
+	NameRegex string `yaml:"name_regex"`
+	Server    string `yaml:"server"`
+}
+
 type Dns53ConfigModel struct {
-	Enabled          bool   `yaml:"enabled"`
-	Listen           string `yaml:"listen"`
-	Upstream         string `yaml:"upstream"`
-	UpstreamFallback string `yaml:"upstream_fallback"`
-	UpstreamProto    string `yaml:"upstream_proto"`
-	EcsIP1st         string `yaml:"1st_ecs_ip"`
-	EcsIP2nd         string `yaml:"2nd_ecs_ip"`
-	UseClientIP      bool   `yaml:"use_client_ip"`
+	Enabled          bool                        `yaml:"enabled"`
+	Listen           string                      `yaml:"listen"`
+	Upstream         string                      `yaml:"upstream"`
+	UpstreamFallback string                      `yaml:"upstream_fallback"`
+	UpstreamProto    string                      `yaml:"upstream_proto"`
+	EcsIP1st         string                      `yaml:"1st_ecs_ip"`
+	EcsIP2nd         string                      `yaml:"2nd_ecs_ip"`
+	UseClientIP      bool                        `yaml:"use_client_ip"`
+	FixedResolving   []FixedResolvingConfigModel `yaml:"fixed_resolving"`
 }
 
 type DohConfigModel struct {
-	Enabled          bool   `yaml:"enabled"`
-	Listen           string `yaml:"listen"`
-	Upstream         string `yaml:"upstream"`
-	UpstreamFallback string `yaml:"upstream_fallback"`
-	UpstreamProto    string `yaml:"upstream_proto"`
-	Path             string `yaml:"path"`
-	EcsIP1st         string `yaml:"1st_ecs_ip"`
-	EcsIP2nd         string `yaml:"2nd_ecs_ip"`
-	UseTls           bool   `yaml:"use_tls"`
-	TLSCertFile      string `yaml:"tls_cert_file"`
-	TLSKeyFile       string `yaml:"tls_key_file"`
-	UseClientIP      bool   `yaml:"use_client_ip"`
+	Enabled          bool                        `yaml:"enabled"`
+	Listen           string                      `yaml:"listen"`
+	Upstream         string                      `yaml:"upstream"`
+	UpstreamFallback string                      `yaml:"upstream_fallback"`
+	UpstreamProto    string                      `yaml:"upstream_proto"`
+	Path             string                      `yaml:"path"`
+	EcsIP1st         string                      `yaml:"1st_ecs_ip"`
+	EcsIP2nd         string                      `yaml:"2nd_ecs_ip"`
+	UseTls           bool                        `yaml:"use_tls"`
+	TLSCertFile      string                      `yaml:"tls_cert_file"`
+	TLSKeyFile       string                      `yaml:"tls_key_file"`
+	UseClientIP      bool                        `yaml:"use_client_ip"`
+	FixedResolving   []FixedResolvingConfigModel `yaml:"fixed_resolving"`
 }
 
 type ConfigModel struct {
